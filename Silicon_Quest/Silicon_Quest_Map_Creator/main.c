@@ -9,30 +9,38 @@
 #include <allegro5/allegro_primitives.h>
 #include <allegro5/allegro_font.h>
 #include <allegro5/allegro_ttf.h>
+#include <stdio.h>
 
-#define WIDTH   800
-#define HEIGHT  600
+#define WIDTH   1920
+#define HEIGHT  1080
 
-#define COLUNAS 250
-#define LINHAS  100
+#define MAX_COLUNAS 10
+#define MAX_LINHAS  10
+#define COR_BORDAS    242, 210, 99
+
+#define NUM_BLOCOS  6
 
 #define COR_AR      0, 0, 0
 #define COR_TERRA   94, 28, 13
 #define COR_PEDRA   53, 53, 53
 #define COR_SILICIO 249, 249, 249
 #define COR_LAVA    255, 116, 21
+#define COR_AGUA    0, 128, 255
 
 //==============================================
 //GLOBALS
 //==============================================
 
-bool keys[] = {false, false, false, false, false};
-enum KEYS {UP, DOWN, LEFT, RIGHT, SPACE};
+bool keys[] = {false, false, false, false, false, false, false, false, false};
+enum KEYS {UP, DOWN, LEFT, RIGHT, W, A, S, D, SPACE};
 
-char matriz[LINHAS][COLUNAS] = {{0}};
+char matriz[MAX_LINHAS][MAX_COLUNAS] = {{0}};
 
 const int blockHeight = 50;
 const int blockWidth = 50;
+
+int numColunas = MAX_COLUNAS;
+int numLinhas = MAX_LINHAS;
 
 int pos_matriz_x = 0;
 int pos_matriz_y = 0;
@@ -41,6 +49,8 @@ bool done = false;
 bool draw = true;
 int pos_mouse_x = WIDTH / 2;
 int pos_mouse_y = HEIGHT / 2;
+int mouseWheelNow = 0;
+int mouseWheelBefore = 0;
 int coluna;
 int linha;
 
@@ -59,6 +69,11 @@ int main(void)
     //==============================================
     //PROJECT VARIABLES
     //==============================================
+    char selectedBlock = 1;
+    bool minimapOn = 1;
+    bool save = 0;
+    FILE *fp;
+    int j, i;
 
     //==============================================
     //ALLEGRO VARIABLES
@@ -74,6 +89,7 @@ int main(void)
     if(!al_init())										//initialize Allegro
         return -1;
 
+    al_set_new_display_flags(ALLEGRO_FULLSCREEN);
     display = al_create_display(WIDTH, HEIGHT);			//create our display object
 
     if(!display)										//test display object
@@ -124,6 +140,7 @@ int main(void)
         {
             pos_mouse_x = ev.mouse.x;
             pos_mouse_y = ev.mouse.y;
+            mouseWheelNow = ev.mouse.z;
         }
         if(ev.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN)
         {
@@ -131,11 +148,7 @@ int main(void)
             {
                 coluna = (pos_mouse_x - pos_matriz_x) / blockWidth;
                 linha = (pos_mouse_y - pos_matriz_y) / blockHeight;
-                matriz[linha][coluna]++;
-                if(matriz[linha][coluna] > 4)
-                {
-                    matriz[linha][coluna] = 1;
-                }
+                matriz[linha][coluna] = selectedBlock;
             }
 
             if(ev.mouse.button & 2)
@@ -165,8 +178,26 @@ int main(void)
             case ALLEGRO_KEY_DOWN:
                 keys[DOWN] = true;
                 break;
+            case ALLEGRO_KEY_A:
+                keys[A] = true;
+                break;
+            case ALLEGRO_KEY_D:
+                keys[D] = true;
+                break;
+            case ALLEGRO_KEY_W:
+                keys[W] = true;
+                break;
+            case ALLEGRO_KEY_S:
+                keys[S] = true;
+                break;
             case ALLEGRO_KEY_SPACE:
                 keys[SPACE] = true;
+                break;
+            case ALLEGRO_KEY_M:
+                minimapOn = !minimapOn;
+                break;
+            case ALLEGRO_KEY_ENTER:
+                save = true;
                 break;
             }
         }
@@ -189,9 +220,44 @@ int main(void)
             case ALLEGRO_KEY_DOWN:
                 keys[DOWN] = false;
                 break;
+            case ALLEGRO_KEY_A:
+                keys[A] = false;
+                break;
+            case ALLEGRO_KEY_D:
+                keys[D] = false;
+                break;
+            case ALLEGRO_KEY_W:
+                keys[W] = false;
+                break;
+            case ALLEGRO_KEY_S:
+                keys[S] = false;
+                break;
             case ALLEGRO_KEY_SPACE:
                 keys[SPACE] = false;
                 break;
+            }
+
+        }
+        if(mouseWheelNow > mouseWheelBefore){
+            mouseWheelBefore = mouseWheelNow;
+            selectedBlock++;
+            if(selectedBlock >= NUM_BLOCOS)
+                selectedBlock = 1;
+        }else if(mouseWheelNow < mouseWheelBefore){
+            mouseWheelBefore = mouseWheelNow;
+            selectedBlock--;
+            if(selectedBlock < 1)
+                selectedBlock = NUM_BLOCOS - 1;
+        }
+
+        if(save){
+            fp = fopen("TESTE.txt", "w");
+            fprintf(fp, "%d %d\n", numLinhas, numColunas);
+            for(i = 0; i < numLinhas; i++)
+            {
+                for(j = 0; j < numColunas; j++)
+                    fprintf(fp, "%d ", matriz[i][j]);
+                fprintf(fp, "\n");
             }
 
         }
@@ -214,13 +280,13 @@ int main(void)
             //=====================
 
             if(!(pos_matriz_x >= 0))
-				pos_matriz_x += keys[LEFT] * 10;
+				pos_matriz_x += (keys[LEFT] | keys[A]) * 10;
 			if(!(pos_matriz_y >= 0))
-				pos_matriz_y += keys[UP] * 10;
-			if(!(pos_matriz_x <= ((-COLUNAS * blockWidth) + WIDTH)))
-				pos_matriz_x -= keys[RIGHT] * 10;
-			if(!(pos_matriz_y <= ((-LINHAS * blockHeight) + HEIGHT)))
-				pos_matriz_y -= keys[DOWN] * 10;
+				pos_matriz_y += (keys[UP] | keys[W]) * 10;
+			if(!(pos_matriz_x <= ((-numColunas * blockWidth) + WIDTH)))
+				pos_matriz_x -= (keys[RIGHT] | keys[D]) * 10;
+			if(!(pos_matriz_y <= ((-numLinhas * blockHeight) + HEIGHT)))
+				pos_matriz_y -= (keys[DOWN] | keys[S]) * 10;
         }
 
         //==============================================
@@ -230,12 +296,11 @@ int main(void)
         {
             render = false;
 
-
             //BEGIN PROJECT RENDER================
-            int j, i;
-            for(i = 0; i < LINHAS; i++)
+            // DESENHO DO MAPA:
+            for(i = 0; i < numLinhas; i++)
             {
-                for(j = 0; j < COLUNAS; j++)
+                for(j = 0; j < numColunas; j++)
                     switch(matriz[i][j])
                     {
                     case 0: // AR
@@ -253,13 +318,65 @@ int main(void)
                     case 4: // PEDRA INQUEBRAVEL
                         al_draw_filled_rectangle(pos_matriz_x + j * blockWidth, pos_matriz_y + i * blockHeight, pos_matriz_x + (j * blockWidth) + blockWidth, pos_matriz_y + (i * blockHeight) + blockHeight, al_map_rgb(COR_LAVA));
                         break;
+                    case 5: // PEDRA INQUEBRAVEL
+                        al_draw_filled_rectangle(pos_matriz_x + j * blockWidth, pos_matriz_y + i * blockHeight, pos_matriz_x + (j * blockWidth) + blockWidth, pos_matriz_y + (i * blockHeight) + blockHeight, al_map_rgb(COR_AGUA));
+                        break;
                     }
             }
+            /*
+            // DESENHO DO MINIMAPA:
+            if(minimapOn){
+                for(i = 0; i < numLinhas; i++)
+                {
+                    for(j = 0; j < numColunas; j++)
+                        switch(matriz[i][j])
+                        {
+                        case 0: // AR
+                            al_draw_filled_rectangle(0 + j * 5, (HEIGHT - 5 * (numLinhas - i)), 5 + j * 5,(HEIGHT - 5 * (numLinhas - i - 1)), al_map_rgb(COR_AR));
+                            break;
+                        case 1: // TERRA
+                            al_draw_filled_rectangle(0 + j * 5, (HEIGHT - 5 * (numLinhas - i)), 5 + j * 5,(HEIGHT - 5 * (numLinhas - i - 1)), al_map_rgb(COR_TERRA));
+                            break;
+                        case 2: // PEDRA
+                            al_draw_filled_rectangle(0 + j * 5, (HEIGHT - 5 * (numLinhas - i)), 5 + j * 5,(HEIGHT - 5 * (numLinhas - i - 1)), al_map_rgb(COR_PEDRA));
+                            break;
+                        case 3: // SILICIO
+                            al_draw_filled_rectangle(0 + j * 5, (HEIGHT - 5 * (numLinhas - i)), 5 + j * 5,(HEIGHT - 5 * (numLinhas - i - 1)), al_map_rgb(COR_SILICIO));
+                            break;
+                        case 4: // PEDRA INQUEBRAVEL
+                            al_draw_filled_rectangle(0 + j * 5, (HEIGHT - 5 * (numLinhas - i)), 5 + j * 5,(HEIGHT - 5 * (numLinhas - i - 1)), al_map_rgb(COR_LAVA));
+                            break;
+                        }
+                }
+
+            }
+            */
+            switch(selectedBlock)
+                    {
+                    case 1: // TERRA
+                        al_draw_filled_rectangle(WIDTH - (10 + blockWidth), 10, WIDTH - 10, 10 + blockHeight, al_map_rgb(COR_TERRA));
+                        break;
+                    case 2: // PEDRA
+                        al_draw_filled_rectangle(WIDTH - (10 + blockWidth), 10, WIDTH - 10, 10 + blockHeight, al_map_rgb(COR_PEDRA));
+                        break;
+                    case 3: // SILICIO
+                        al_draw_filled_rectangle(WIDTH - (10 + blockWidth), 10, WIDTH - 10, 10 + blockHeight, al_map_rgb(COR_SILICIO));
+                        break;
+                    case 4: // LAVA
+                        al_draw_filled_rectangle(WIDTH - (10 + blockWidth), 10, WIDTH - 10, 10 + blockHeight, al_map_rgb(COR_LAVA));
+                        break;
+                    case 5: // AGUA
+                        al_draw_filled_rectangle(WIDTH - (10 + blockWidth), 10, WIDTH - 10, 10 + blockHeight, al_map_rgb(COR_AGUA));
+                        break;
+                    }
             if(draw)
             {
                 al_draw_rectangle(pos_mouse_x, pos_mouse_y, pos_mouse_x + blockWidth, pos_mouse_y + blockHeight, al_map_rgb(0, 0, 0), 1);
             }
             al_draw_textf(font18, al_map_rgb(255, 0, 255), 5, 5, 0, "FPS: %i", gameFPS);	//display FPS on screen
+
+            al_draw_rectangle(WIDTH - (10 + blockWidth), 10, WIDTH - 10, 10 + blockHeight, al_map_rgb(COR_BORDAS), 1);
+            al_draw_rectangle(1, 1, WIDTH, HEIGHT, al_map_rgb(COR_BORDAS), 1);
 
             //FLIP BUFFERS========================
             al_flip_display();
