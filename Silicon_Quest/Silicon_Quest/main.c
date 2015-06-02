@@ -1,12 +1,7 @@
 /*
+	Jogo Silicon_Quest feito em Allegro 5.
 
-		Allegro 5 Shell Application v1.1
-			by Mike Geig
-
-		This code is provided for education purposes and comes with no warantee
-		either implicit or explicit.
-
-		This code is free to use however you see fit.
+	Feito por Stefano Bergamini e Daniel Baule.
 */
 
 #include <allegro5/allegro.h>
