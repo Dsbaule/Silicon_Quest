@@ -11,8 +11,8 @@
 #include <allegro5/allegro_ttf.h>
 #include <stdio.h>
 
-#define WIDTH   1920
-#define HEIGHT  1080
+#define WIDTH   800
+#define HEIGHT  600
 
 #define MAX_COLUNAS 10
 #define MAX_LINHAS  10
@@ -89,7 +89,7 @@ int main(void)
     if(!al_init())										//initialize Allegro
         return -1;
 
-    al_set_new_display_flags(ALLEGRO_FULLSCREEN);
+    //al_set_new_display_flags(ALLEGRO_FULLSCREEN);
     display = al_create_display(WIDTH, HEIGHT);			//create our display object
 
     if(!display)										//test display object
@@ -259,6 +259,7 @@ int main(void)
                     fprintf(fp, "%d ", matriz[i][j]);
                 fprintf(fp, "\n");
             }
+            fclose(fp);
 
         }
 

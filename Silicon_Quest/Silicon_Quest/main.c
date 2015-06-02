@@ -18,7 +18,7 @@
 //==============================================
 
 bool keys[] = {false, false, false, false, false, false, false, false, false};
-enum KEYS {KEY_W, KEY_S, KEY_A, KEY_D, UP, DOWN, LEFT, RIGHT, SPACE};
+enum KEYS {W, S, A, D, UP, DOWN, LEFT, RIGHT, SPACE};
 
 int colunas = 20;
 int linhas = 20;
@@ -190,16 +190,16 @@ int main(void)
                 keys[DOWN] = true;
                 break;
 			case ALLEGRO_KEY_A:
-				keys[KEY_A] = true;
+				keys[A] = true;
 				break;
 			case ALLEGRO_KEY_D:
-				keys[KEY_D] = true;
+				keys[D] = true;
 				break;
 			case ALLEGRO_KEY_W:
-				keys[KEY_W] = true;
+				keys[W] = true;
 				break;
 			case ALLEGRO_KEY_S:
-				keys[KEY_S] = true;
+				keys[S] = true;
 				break;
             case ALLEGRO_KEY_SPACE:
                 keys[SPACE] = true;
@@ -226,16 +226,16 @@ int main(void)
                 keys[DOWN] = false;
                 break;
 			case ALLEGRO_KEY_A:
-				keys[KEY_A] = false;
+				keys[A] = false;
 				break;
 			case ALLEGRO_KEY_D:
-				keys[KEY_D] = false;
+				keys[D] = false;
 				break;
 			case ALLEGRO_KEY_W:
-				keys[KEY_W] = false;
+				keys[W] = false;
 				break;
 			case ALLEGRO_KEY_S:
-				keys[KEY_S] = false;
+				keys[S] = false;
 				break;
             case ALLEGRO_KEY_SPACE:
                 keys[SPACE] = false;
@@ -263,13 +263,13 @@ int main(void)
 
 
             if(!(xOff >= 0))
-				xOff += keys[KEY_A] * 10;
+				xOff += (keys[LEFT] | keys[A]) * 10;
 			if(!(yOff >= 0))
-				yOff += keys[KEY_W] * 10;
+				yOff += (keys[UP] | keys[W]) * 10;
 			if(!(xOff <= ((-colunas * tam_bloco_hor) + WIDTH)))
-				xOff -= keys[KEY_D] * 10;
+				xOff -= (keys[RIGHT] | keys[D]) * 10;
 			if(!(yOff <= ((-linhas * tam_bloco_ver) + HEIGHT)))
-				yOff -= keys[KEY_S] * 10;
+				yOff -= (keys[DOWN] | keys[S]) * 10;
         }
 
         //==============================================
