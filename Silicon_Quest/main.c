@@ -22,11 +22,16 @@
 //GLOBALS
 //==============================================
 
-bool keys[] = {false, false, false, false, false};
-enum KEYS {UP, DOWN, LEFT, RIGHT, SPACE};
+bool keys[] = {false, false, false, false, false, false, false, false, false};
+enum KEYS {KEY_W, KEY_S, KEY_A, KEY_D, UP, DOWN, LEFT, RIGHT, SPACE};
 
 int colunas = 20;
 int linhas = 20;
+
+const int tam_bloco_hor = 80;
+const int tam_bloco_ver = 60;
+const int tam_player_hor = 40;
+const int tam_player_ver = 30;
 
 int matriz[20][20]=
 {
@@ -52,16 +57,18 @@ int matriz[20][20]=
     {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}
 };
 
-int pos_matriz_x = 0;
-int pos_matriz_y = 0;
-
 bool done = false;
-bool draw = true;
-int pos_x = WIDTH / 2;
-int pos_y = HEIGHT / 2;
-int coluna;
-int linha;
 
+int pos_mouse_x = WIDTH / 2;
+int pos_mouse_y = HEIGHT / 2;
+
+int coluna, linha;
+
+typedef struct
+{
+	int x;
+	int y;
+}s_Object;
 
 int main(void)
 {
@@ -80,6 +87,10 @@ int main(void)
     //==============================================
 	int xOff = 0;
 	int yOff = 0;
+
+	s_Object Player;
+	Player.x = WIDTH / 2 - 60 ;
+	Player.y = HEIGHT / 2 - 15 ;
 
     //==============================================
     //ALLEGRO VARIABLES
@@ -103,7 +114,7 @@ int main(void)
     //==============================================
     //ADDON INSTALL
     //==============================================
-    al_install_keyboard();xOff -= keys[RIGHT] * 10;
+    al_install_keyboard();
     al_install_mouse();
     al_init_image_addon();
     al_init_font_addon();
@@ -143,15 +154,15 @@ int main(void)
         }
         if(ev.type == ALLEGRO_EVENT_MOUSE_AXES)
         {
-            pos_x = ev.mouse.x;
-            pos_y = ev.mouse.y;
+            pos_mouse_x = ev.mouse.x;
+            pos_mouse_y = ev.mouse.y;
         }
         if(ev.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN)
         {
             if(ev.mouse.button & 1)
             {
-                coluna = (pos_x - pos_matriz_x) / 80;
-                linha = (pos_y - pos_matriz_y) / 60;
+                coluna = (pos_mouse_x - xOff) / tam_bloco_hor;
+                linha = (pos_mouse_y - yOff) / tam_bloco_ver;
             }
             if(matriz[linha][coluna] == 1)
 			{
@@ -183,6 +194,18 @@ int main(void)
             case ALLEGRO_KEY_DOWN:
                 keys[DOWN] = true;
                 break;
+			case ALLEGRO_KEY_A:
+				keys[KEY_A] = true;
+				break;
+			case ALLEGRO_KEY_D:
+				keys[KEY_D] = true;
+				break;
+			case ALLEGRO_KEY_W:
+				keys[KEY_W] = true;
+				break;
+			case ALLEGRO_KEY_S:
+				keys[KEY_S] = true;
+				break;
             case ALLEGRO_KEY_SPACE:
                 keys[SPACE] = true;
                 break;
@@ -207,6 +230,18 @@ int main(void)
             case ALLEGRO_KEY_DOWN:
                 keys[DOWN] = false;
                 break;
+			case ALLEGRO_KEY_A:
+				keys[KEY_A] = false;
+				break;
+			case ALLEGRO_KEY_D:
+				keys[KEY_D] = false;
+				break;
+			case ALLEGRO_KEY_W:
+				keys[KEY_W] = false;
+				break;
+			case ALLEGRO_KEY_S:
+				keys[KEY_S] = false;
+				break;
             case ALLEGRO_KEY_SPACE:
                 keys[SPACE] = false;
                 break;
@@ -231,14 +266,15 @@ int main(void)
             }
             //=====================
 
+
             if(!(xOff >= 0))
-				xOff += keys[LEFT] * 10;
+				xOff += keys[KEY_A] * 10;
 			if(!(yOff >= 0))
-				yOff += keys[UP] * 10;
-			if(!(xOff <= ((-20 * 80) + 800)))
-				xOff -= keys[RIGHT] * 10;
-			if(!(yOff <= ((-20 * 60) + 600)))
-				yOff -= keys[DOWN] * 10;
+				yOff += keys[KEY_W] * 10;
+			if(!(xOff <= ((-colunas * tam_bloco_hor) + WIDTH)))
+				xOff -= keys[KEY_D] * 10;
+			if(!(yOff <= ((-linhas * tam_bloco_ver) + HEIGHT)))
+				yOff -= keys[KEY_S] * 10;
         }
 
         //==============================================
@@ -257,17 +293,14 @@ int main(void)
                     switch(matriz[i][j])
                     {
                     case 0:
-                        al_draw_filled_rectangle(xOff+j*80, yOff+i*60, xOff+(j*80)+80,yOff+(i*60)+60, al_map_rgb(122, 0, 0));
+                        al_draw_filled_rectangle(xOff + j * tam_bloco_hor, yOff + i * tam_bloco_ver, xOff + (j * tam_bloco_hor) + tam_bloco_hor, yOff + (i*tam_bloco_ver) + tam_bloco_ver, al_map_rgb(122, 0, 0));
                         break;
                     case 1:
-                        al_draw_filled_rectangle(xOff+j*80, yOff+i*60, xOff+(j*80)+80,yOff+(i*60)+60, al_map_rgb(122, 0, 122));
+                        al_draw_filled_rectangle(xOff + j * tam_bloco_hor, yOff + i * tam_bloco_ver, xOff + (j * tam_bloco_hor) + tam_bloco_hor, yOff + (i * tam_bloco_ver) + tam_bloco_ver, al_map_rgb(122, 0, 122));
                         break;
                     }
             }
-            if(draw)
-            {
-                al_draw_rectangle(pos_x, pos_y, pos_x + 80, pos_y + 60, al_map_rgb(0, 0, 0), 1);
-            }
+			al_draw_filled_rectangle(Player.x, Player.y, Player.x + tam_player_hor, Player.y + tam_player_ver, al_map_rgb(255, 255, 255));
             al_draw_textf(font18, al_map_rgb(255, 0, 255), 5, 5, 0, "FPS: %i", gameFPS);	//display FPS on screen
 
             //FLIP BUFFERS========================
