@@ -14,5 +14,3 @@ Jogo de Plataformer com elementos de mineração e posicionamento de blocos, com
 * Developed by: Dsbaule (Daniel de Souza Baulé) e Stefano Bergamini Poletto (Stefano Bergamini Poletto...)
 * Built for: Everybody
 * Supported by: Nem a minha mãe
-.
-...
