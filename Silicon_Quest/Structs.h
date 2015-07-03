@@ -28,6 +28,7 @@ struct Players
 	int boundy2;
 
 	bool jump;
+	bool mine;
 	bool initialized;
 	float force;
 
@@ -97,7 +98,7 @@ struct Maps
     int blockWidth;
     int blockHeight;
 
-    int8_t Blocos[MAX_LINHAS][MAX_COLUNAS];
+    int Blocos[MAX_LINHAS][MAX_COLUNAS];
 };
 
 struct Bloco
