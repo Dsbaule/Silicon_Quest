@@ -28,6 +28,7 @@ struct Players
 	int boundy2;
 
 	bool jump;
+	bool initialized;
 	float force;
 
 	bool colisionUp;

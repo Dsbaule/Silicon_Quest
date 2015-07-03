@@ -62,6 +62,9 @@ ALLEGRO_EVENT ev;
 
 ALLEGRO_DISPLAY *display = NULL;
 
+ALLEGRO_BITMAP *pickaxeCursor = NULL;
+ALLEGRO_BITMAP *idleCursor = NULL;
+
 //--------------------------------------------------
 // Definição das variaveis para INPUT
 //--------------------------------------------------
@@ -87,6 +90,7 @@ bool draw = false;
 // Definição das variaveis gerais globais
 //--------------------------------------------------
 struct Maps Map = {0};
+struct Sprite_Animation blockCracking = {0};
 int selectedOption = 0;
 
 bool warning = false;
@@ -99,6 +103,7 @@ char warningText[30] = "";
 
 //prototypes
 void InitPlayer(struct Players *Player, struct Maps *curMap);
+void updatePlayer(struct Players *Player);
 void ResetPlayerAnimation(struct Players *Player, int animation);
 void DrawPlayer(struct Players *Player);
 void MovePlayerLeft(struct Players *Player);
@@ -135,14 +140,14 @@ int gameTutorial(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMA
 int gamePause(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *Background);
 int mapCreatorMenu1(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *Background, struct Maps *curMap);
 int mapCreatorMenu2(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *Background, struct Maps *curMap, ALLEGRO_FONT *font);
-int mapCreatorPause(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *Background);
+int mapCreatorPause(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *Background, struct Maps *curMap);
 
-int game();
+int game(struct Players *Player, struct Maps *curMap, struct Enemies *Enemy[], ALLEGRO_BITMAP *Background, ALLEGRO_BITMAP *Blocos, ALLEGRO_BITMAP *BlockCracks, ALLEGRO_BITMAP *EnemyImage);
 int mapCreator(struct Maps *curMap, ALLEGRO_BITMAP *background, ALLEGRO_BITMAP *Blocos, ALLEGRO_BITMAP *frame, ALLEGRO_FONT *font);
 
 int checkEvents();
 void readInputs();
-void saveMap();
+void saveMap(struct Maps *curMap);
 
 int detectColisionRight_Matriz(struct Players *Player, struct Maps *curMap);
 int detectColisionLeft_Matriz(struct Players *Player, struct Maps *curMap);
@@ -185,9 +190,6 @@ int main()
 
     ALLEGRO_BITMAP *blocos = NULL;
     ALLEGRO_BITMAP *blockCracks = NULL;
-
-    ALLEGRO_BITMAP *pickaxeCursor = NULL;
-    ALLEGRO_BITMAP *idleCursor = NULL;
 
     //Initialization Functions
     if(!al_init())
@@ -235,7 +237,7 @@ int main()
     Player.standing.Image = al_load_bitmap("Bitmaps/minerStanding.png");
     Player.running.Image = al_load_bitmap("Bitmaps/minerRunning.png");
     Player.mining.Image = al_load_bitmap("Bitmaps/minerMining.png");
-    Player.idle.Image = al_load_bitmap("Bitmaps/minIdle.png");
+    Player.idle.Image = al_load_bitmap("Bitmaps/minerIdle.png");
     Player.dying.Image = al_load_bitmap("Bitmaps/minerDying.png");
 
     enemyImage = al_load_bitmap("Bitmaps/MineTurtle.png");
@@ -258,6 +260,9 @@ int main()
     gameOverImage = al_load_bitmap("Bitmaps/GameOver.png");
 
     background = al_load_bitmap("Bitmaps/BackGroundGray.png");
+
+    pickaxeCursor = al_load_bitmap("Bitmaps/mineCursor.png");
+    idleCursor = al_load_bitmap("Bitmaps/notMineCursor.png");
 
     //Setup das Fontes
     arial_18 = al_load_font("arial.ttf", 18, 0);
@@ -284,8 +289,6 @@ int main()
     al_start_timer(menuTimer);
     al_start_timer(jumpTimer);
 
-    InitPlayer(&Player, &Map);
-
     while(!done)
     {
         al_wait_for_event(event_queue, &ev);
@@ -299,7 +302,15 @@ int main()
         else if(gameState == 2)
             gameState = gameTutorial(gameMenuImage, frameMenu, background);
         else if(gameState == 3)
-            gameState = game(&Player, &Map, &Enemy);
+        {
+            if(!Player.initialized){
+                InitPlayer(&Player, &Map);
+                InitMap(&Map, &Player, Enemy);
+            }
+            gameState = game(&Player, &Map, Enemy, background, blocos, blockCracks, enemyImage);
+            if(gameState != 3)
+                Player.initialized = false;
+        }
         else if(gameState == 4)
             gameState = gamePause(gameMenuImage, frameMenu, background);
         else if(gameState == 5)
@@ -313,7 +324,7 @@ int main()
         else if(gameState == 7)
             gameState = mapCreator(&Map, background, blocos, frame, arial_18);
         else if(gameState == 8)
-            gameState = mapCreatorPause(gameMenuImage, frameMenu, background);
+            gameState = mapCreatorPause(mapCreatorPauseImage, frameMenu, background, &Map);
         else
             done = true;
 
@@ -321,7 +332,10 @@ int main()
         {
             draw = false;
 
-            al_draw_textf(arial_18, al_map_rgb(255, 255, 255), 10, 10, 0, "Selected Block = %d", mouse.selectedBlock);
+            al_draw_textf(arial_18, al_map_rgb(255, 255, 255), 10, 10, 0, "ColisionDown = %d", Player.colisionDown);
+            al_draw_textf(arial_18, al_map_rgb(255, 255, 255), 10, 30, 0, "Playery = %d", Player.boundy);
+            al_draw_textf(arial_18, al_map_rgb(255, 255, 255), 10, 50, 0, "Playery2 = %d", Player.boundy2);
+
 
             al_flip_display();
             al_clear_to_color(al_map_rgb(0,0,0));
@@ -368,20 +382,26 @@ int main()
 
 void InitPlayer(struct Players *Player, struct Maps *curMap)
 {
-    int i, j;
-
     ResetPlayerAnimation(Player, 0);
     ResetPlayerAnimation(Player, 1);
     ResetPlayerAnimation(Player, 2);
     ResetPlayerAnimation(Player, 3);
     ResetPlayerAnimation(Player, 4);
 
+    Player->height = 100;
+    Player->width = 50;
+
     Player->boundx = (DISPLAY_WIDTH/2) - (Player->width/2);
     Player->boundy = (DISPLAY_HEIGHT/2) - (Player->height/2);
 
-    Player->height = 100;
+    Player->force = 0;
+
+    Player->tresHold = 160;
+
+    Player->initialized = true;
 
     updatePlayer(Player);
+    animatePlayer(Player);
 }
 
 void ResetPlayerAnimation(struct Players *Player, int animation)
@@ -439,11 +459,13 @@ void ResetPlayerAnimation(struct Players *Player, int animation)
 
 void DrawPlayer(struct Players *Player)
 {
-    if((Player->state == 0) && (Player->direction == 1))
+    al_draw_rectangle(Player->boundx, Player->boundy, Player->boundx2, Player->boundy2, al_map_rgb(255, 255, 255), 0);
+
+    if((Player->state == 0) && (Player->direction == 0))
     {
         al_draw_scaled_bitmap(Player->standing.Image, Player->standing.curFrame * Player->standing.frameWidth, 0, Player->standing.frameWidth, Player->standing.frameHeight, Player->x, Player->y, 200, 200,0);
     }
-    else if((Player->state == 0) && (Player->direction == 0))
+    else if((Player->state == 0) && (Player->direction == 1))
     {
         al_draw_scaled_bitmap(Player->standing.Image, Player->standing.curFrame * Player->standing.frameWidth, 0, Player->standing.frameWidth, Player->standing.frameHeight, Player->x, Player->y, Player->standing.frameWidth * 2.5, Player->standing.frameHeight * 2.5, ALLEGRO_FLIP_HORIZONTAL);
     }
@@ -455,29 +477,29 @@ void DrawPlayer(struct Players *Player)
     {
         al_draw_scaled_bitmap(Player->running.Image, Player->running.curFrame * Player->running.frameWidth, 0, Player->running.frameWidth, Player->running.frameHeight, Player->x, Player->y, Player->running.frameWidth * 2.5, Player->running.frameHeight * 2.5, ALLEGRO_FLIP_HORIZONTAL);
     }
-    else if((Player->state == 1) && (Player->direction == 0))
+    else if((Player->state == 2) && (Player->direction == 0))
     {
         al_draw_scaled_bitmap(Player->mining.Image, Player->mining.curFrame * Player->mining.frameWidth, 0, Player->mining.frameWidth, Player->mining.frameHeight, Player->x, Player->y, Player->mining.frameWidth * 2.5, Player->mining.frameHeight * 2.5,0);
     }
-    else if((Player->state == 1) && (Player->direction == 1))
+    else if((Player->state == 2) && (Player->direction == 1))
     {
-        al_draw_scaled_bitmap(Player->standing.Image, Player->standing.curFrame * Player->standing.frameWidth, 0, Player->standing.frameWidth, Player->standing.frameHeight, Player->x, Player->y, Player->standing.frameWidth * 2.5, Player->standing.frameHeight * 2.5, ALLEGRO_FLIP_HORIZONTAL);
+        al_draw_scaled_bitmap(Player->mining.Image, Player->mining.curFrame * Player->mining.frameWidth, 0, Player->mining.frameWidth, Player->mining.frameHeight, Player->x, Player->y, Player->mining.frameWidth * 2.5, Player->mining.frameHeight * 2.5, ALLEGRO_FLIP_HORIZONTAL);
     }
-    else if((Player->state == 1) && (Player->direction == 0))
+    else if((Player->state == 3) && (Player->direction == 0))
     {
         al_draw_scaled_bitmap(Player->idle.Image, Player->idle.curFrame * Player->idle.frameWidth, 0, Player->idle.frameWidth, Player->idle.frameHeight, Player->x, Player->y, Player->idle.frameWidth * 2.5, Player->idle.frameHeight * 2.5,0);
     }
-    else if((Player->state == 1) && (Player->direction == 1))
+    else if((Player->state == 3) && (Player->direction == 1))
     {
-        al_draw_scaled_bitmap(Player->standing.Image, Player->standing.curFrame * Player->standing.frameWidth, 0, Player->standing.frameWidth, Player->standing.frameHeight, Player->x, Player->y, Player->standing.frameWidth * 2.5, Player->standing.frameHeight * 2.5, ALLEGRO_FLIP_HORIZONTAL);
+        al_draw_scaled_bitmap(Player->idle.Image, Player->idle.curFrame * Player->idle.frameWidth, 0, Player->idle.frameWidth, Player->idle.frameHeight, Player->x, Player->y, Player->idle.frameWidth * 2.5, Player->idle.frameHeight * 2.5, ALLEGRO_FLIP_HORIZONTAL);
     }
-    else if((Player->state == 1) && (Player->direction == 0))
+    else if((Player->state == 4) && (Player->direction == 0))
     {
         al_draw_scaled_bitmap(Player->dying.Image, Player->dying.curFrame * Player->dying.frameWidth, 0, Player->dying.frameWidth, Player->dying.frameHeight, Player->x, Player->y, Player->dying.frameWidth * 2.5, Player->dying.frameHeight * 2.5,0);
     }
-    else if((Player->state == 1) && (Player->direction == 1))
+    else if((Player->state == 4) && (Player->direction == 1))
     {
-        al_draw_scaled_bitmap(Player->standing.Image, Player->standing.curFrame * Player->standing.frameWidth, 0, Player->standing.frameWidth, Player->standing.frameHeight, Player->x, Player->y, Player->standing.frameWidth * 2.5, Player->standing.frameHeight * 2.5, ALLEGRO_FLIP_HORIZONTAL);
+        al_draw_scaled_bitmap(Player->dying.Image, Player->dying.curFrame * Player->dying.frameWidth, 0, Player->dying.frameWidth, Player->dying.frameHeight, Player->x, Player->y, Player->dying.frameWidth * 2.5, Player->dying.frameHeight * 2.5, ALLEGRO_FLIP_HORIZONTAL);
     }
 }
 
@@ -497,7 +519,7 @@ void animatePlayer(struct Players *Player)
         Player->standing.curFrame = 0;
     }
 
-    if(Player->state == 1 || Player->state == 2)
+    if(Player->state == 1)
     {
         if(++Player->running.frameCount >= Player->running.frameDelay)
         {
@@ -509,6 +531,20 @@ void animatePlayer(struct Players *Player)
     else
     {
         Player->running.curFrame = 0;
+    }
+
+    if(Player->state == 2)
+    {
+        if(++Player->mining.frameCount >= Player->mining.frameDelay)
+        {
+            if(++Player->mining.curFrame >= Player->mining.maxFrame)
+                Player->mining.curFrame = 0;
+            Player->mining.frameCount = 0;
+        }
+    }
+    else
+    {
+        Player->mining.curFrame = 0;
     }
 
     if(Player->state == 3)
@@ -526,20 +562,6 @@ void animatePlayer(struct Players *Player)
     }
 
     if(Player->state == 4)
-    {
-        if(++Player->mining.frameCount >= Player->mining.frameDelay)
-        {
-            if(++Player->mining.curFrame >= Player->mining.maxFrame)
-                Player->mining.curFrame = 0;
-            Player->mining.frameCount = 0;
-        }
-    }
-    else
-    {
-        Player->mining.curFrame = 0;
-    }
-
-    if(Player->state == 5)
     {
         if(++Player->dying.frameCount >= Player->dying.frameDelay)
         {
@@ -607,8 +629,6 @@ void playerJump(struct Players *Player)
 
 void updatePlayer(struct Players *Player)
 {
-    animatePlayer(Player);
-
     Player->boundx2 = Player->boundx + Player->width - 1;
     Player->boundy2 = Player->boundy + Player->height - 1;
 
@@ -718,16 +738,16 @@ void InitMap(struct Maps *curMap, struct Players *Player, struct Enemies *Enemy[
             {
                 if(curMap->Blocos[i][j] == 5)
                 {
-                    curMap->Blocos[i][j] == 0;
+                    curMap->Blocos[i][j] = 0;
                     Player->boundx = curMap->x + (j * curMap->blockWidth);
-                    Player->boundy = curMap->y + (i * curMap->blockHeight);
+                    Player->boundy = curMap->y + ((i-1) * curMap->blockHeight);
                     updateMapPosition(Player, curMap);
                 }
                 if(curMap->Blocos[i][j] == 6)
                 {
                     if(curEnemy < curMap->numEnemies)
                     {
-                        curMap->Blocos[i][j] == 0;
+                        curMap->Blocos[i][j] = 0;
                         Enemy[curEnemy]->boundx = curMap->x + (j * curMap->blockWidth);
                         Enemy[curEnemy]->boundy = curMap->y + (i * curMap->blockHeight);
                         curEnemy++;
@@ -884,36 +904,307 @@ int gameTutorial(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMA
     return 2;
 }
 
-int game(struct Players *Player, struct Maps *curMap, struct Enemies *Enemy[])
+int game(struct Players *Player, struct Maps *curMap, struct Enemies *Enemy[], ALLEGRO_BITMAP *Background, ALLEGRO_BITMAP *Blocos, ALLEGRO_BITMAP *BlockCracks, ALLEGRO_BITMAP *EnemyImage)
 {
-    Player->colisionDown = !detectColisionDown_Matriz(Player, curMap);
-    Player->colisionUp = !detectColisionUp_Matriz(Player, curMap);
+    bool PickaxeCursor = 0;
+    int i, j;
+
+    Player->colisionLeft = detectColisionLeft_Matriz(Player, curMap);
+    Player->colisionRight = detectColisionRight_Matriz(Player, curMap);
+    Player->colisionUp = detectColisionUp_Matriz(Player, curMap);
+    Player->colisionDown = detectColisionDown_Matriz(Player, curMap);
+
+    // READ MOUSE MOVEMENT (TO BLOCK LIMITS)
+    if(mouse.x < 0)
+        mouse.x = 0;
+    if(mouse.y < 0)
+        mouse.y = 0;
+
+    if(mouse.x < curMap->x)
+        mouse.x = curMap->x;
+    if(mouse.y < curMap->y)
+        mouse.y = curMap->y;
+
+    if(mouse.x > DISPLAY_WIDTH)
+        mouse.x = DISPLAY_WIDTH;
+    if(mouse.y > DISPLAY_HEIGHT)
+        mouse.y = DISPLAY_HEIGHT;
+
+    if(mouse.x >= (curMap->x + (curMap->numColunas * curMap->blockWidth)))
+        mouse.x = curMap->x + (curMap->numColunas * curMap->blockWidth) - 1;
+    if(mouse.y >= (curMap->y + (curMap->numLinhas * curMap->blockHeight)))
+        mouse.y = curMap->y + (curMap->numLinhas * curMap->blockHeight) - 1;
+
+    mouse.coluna = (mouse.x - curMap->x)/curMap->blockWidth;
+    mouse.linha = (mouse.y - curMap->y)/curMap->blockHeight;
+
+    // READ MOUSE WHEEL MOVEMENT
+    if(mouse.wheelNow > mouse.wheelBefore)
+    {
+        mouse.wheelBefore = mouse.wheelNow;
+        mouse.selectedBlock++;
+        if(mouse.selectedBlock >= NUM_BLOCOS)
+            mouse.selectedBlock = 1;
+    }
+    else if(mouse.wheelNow < mouse.wheelBefore)
+    {
+        mouse.wheelBefore = mouse.wheelNow;
+        mouse.selectedBlock--;
+        if(mouse.selectedBlock < 1)
+            mouse.selectedBlock = NUM_BLOCOS - 1;
+    }
+
+    if(curMap->x > 0)
+        curMap->x = 0;
+    else if(curMap->y > 0)
+        curMap->y = 0;
+
+    if((movement && !keys[SHIFT])||(movementBoost && keys[SHIFT]))
+    {
+        if(!(keys[LEFT] || keys[A]) && !(keys[RIGHT] || keys[D]) && !(keys[UP] || keys[W]) && !(keys[DOWN] || keys[S]))
+        {
+            Player->state = 0;
+        }
+        else if((keys[LEFT] || keys[A]) && (keys[RIGHT] || keys[D]))
+        {
+            Player->state = 0;
+        }
+        else if((keys[A] || keys[LEFT]) && (Player->colisionLeft == 0) && (Player->boundx > 0))
+        {
+            Player->state = 1;
+
+            Player->direction = 0;
+
+            Player->boundx -= MOVEMENT_STEP;
+        }
+        else if((keys[D] || keys[RIGHT]) && (Player->colisionRight == 0) && ((Player->boundx + Player->width) < DISPLAY_WIDTH))
+        {
+            Player->state = 1;
+
+            Player->direction = 1;
+
+            Player->boundx += MOVEMENT_STEP;
+        }
+
+        Player->jump = !Player->colisionDown;
+
+        if((keys[W] || keys[UP]) && (Player->colisionUp == 0) && (Player->boundy > 0) && !Player->jump)
+        {
+            Player->jump = true;
+            Player->force = JUMP_FORCE;
+        }
+
+        if(Player->jump)
+        {
+            Player->boundy -= Player->force;
+        }
+
+        Player->colisionDown = detectColisionDown_Matriz(Player, curMap);
+        Player->colisionUp = detectColisionUp_Matriz(Player, curMap);
+
+        if(Player->colisionDown || Player->colisionUp)
+            Player->force = 0;
 
 
-    if(keys[ESC])
+        if(Player->force < -10)
+            Player->force = -10;
+
+        //if((keys[W] || keys[UP]) && (colisionUp == 0) && (Player->boundy > 0))
+        //Player->boundy -= MOVEMENT_STEP;
+        if((keys[S] || keys[DOWN]) && (Player->colisionDown == 0) && ((Player->boundy + Player->height) < DISPLAY_HEIGHT))
+            Player->boundy += MOVEMENT_STEP;
+    }
+
+    if(Player->colisionLeft)
+    {
+        Player->direction = 0;
+        Player->state = 0;
+    }
+    if(Player->colisionRight)
+    {
+        Player->direction = 1;
+        Player->state = 0;
+    }
+
+
+    if(Player->tresHold > CheckDistance((Player->boundx + 23), (Player->boundy + 50), (curMap->x + (mouse.coluna * curMap->blockWidth)), (curMap->y + (mouse.linha * curMap->blockHeight)))
+            || (Player->tresHold > CheckDistance((Player->boundx + 23), (Player->boundy + 50), (curMap->x + curMap->blockWidth + (mouse.coluna * curMap->blockWidth)), (curMap->y + (mouse.linha * curMap->blockHeight))))
+            || (Player->tresHold > CheckDistance((Player->boundx + 23), (Player->boundy + 50), (curMap->x + (mouse.coluna * curMap->blockWidth)), (curMap->y + curMap->blockHeight + (mouse.linha * curMap->blockHeight))))
+            || (Player->tresHold > CheckDistance((Player->boundx + 23), (Player->boundy + 50), (curMap->x + curMap->blockWidth + (mouse.coluna * curMap->blockWidth)), (curMap->y + curMap->blockHeight + (mouse.linha * curMap->blockHeight)))))
+    {
+        PickaxeCursor = 1;
+        if(keys[MOUSE_1] && !(keys[LEFT] || keys[A] || keys[RIGHT] || keys[D] || keys[UP] || keys[W] || keys[DOWN] || keys[S]))
+        {
+            if(curMap->Blocos[mouse.linha][mouse.coluna] != 0)
+            {
+                if(++blockCracking.frameCount >= blockCracking.frameDelay)
+                {
+                    blockCracking.frameCount = 0;
+                    blockCracking.curFrame++;
+
+                    if(blockCracking.curFrame >= blockCracking.maxFrame)
+                        blockCracking.curFrame = 0;
+
+                    if(blockCracking.curFrame == 0)
+                        curMap->Blocos[mouse.linha][mouse.coluna] = 0;
+                }
+
+                Player->state = 2;
+
+                if((curMap->x + (mouse.coluna * curMap->blockWidth)) < Player->boundx)
+                    Player->direction = 0;
+                else if((curMap->x + (mouse.coluna * curMap->blockWidth)) > Player->boundx)
+                    Player->direction = 1;
+            }
+        }
+        else
+        {
+            blockCracking.frameCount = 0;
+            blockCracking.curFrame = 0;
+        }
+    }
+    else
+    {
+        PickaxeCursor = 0;
+    }
+    if(keys[MOUSE_2])
+        curMap->Blocos[mouse.linha][mouse.coluna] = mouse.selectedBlock;
+
+    if(jumpResistance)
+    {
+        if(Player->jump)
+        {
+            Player->force -= GRAVITY;
+        }
+        jumpResistance = false;
+    }
+
+    Player->colisionLeft = detectColisionLeft_Matriz(Player, curMap);
+    Player->colisionRight = detectColisionRight_Matriz(Player, curMap);
+    Player->colisionUp = detectColisionUp_Matriz(Player, curMap);
+    Player->colisionDown = detectColisionDown_Matriz(Player, curMap);
+
+    if((curMap->x <= 0) && (Player->boundx <= ((DISPLAY_WIDTH/2) - (Player->width/2))))
+    {
+        curMap->x += ((DISPLAY_WIDTH/2) - (Player->width/2)) - Player->boundx;
+        Player->boundx = ((DISPLAY_WIDTH/2) - (Player->width/2));
+    }
+
+    if((curMap->y <= 0) && (Player->boundy <= ((DISPLAY_HEIGHT/2) - (Player->height/2))))
+    {
+        curMap->y += ((DISPLAY_HEIGHT/2) - (Player->height/2)) - Player->boundy;
+        Player->boundy = ((DISPLAY_HEIGHT/2) - (Player->height/2));
+    }
+
+    if(((curMap->x + (curMap->numColunas * curMap->blockWidth)) > DISPLAY_WIDTH) && (Player->boundx >= ((DISPLAY_WIDTH/2) - (Player->width/2))))
+    {
+        curMap->x += ((DISPLAY_WIDTH/2) - (Player->width/2)) - Player->boundx;
+        Player->boundx = ((DISPLAY_WIDTH/2) - (Player->width/2));
+    }
+
+    if(((curMap->y + (curMap->numLinhas * curMap->blockHeight)) > DISPLAY_HEIGHT) && (Player->boundy >= ((DISPLAY_HEIGHT/2) - (Player->height/2))))
+    {
+        curMap->y += ((DISPLAY_HEIGHT/2) - (Player->height/2)) - Player->boundy;
+        Player->boundy = ((DISPLAY_HEIGHT/2) - (Player->height/2));
+    }
+
+    movement = false;
+    movementBoost = false;
+
+    if(keys[P] || keys[ESC])
         return 4;
 
-    if(keys[S] && Player->colisionDown)
-        Player->boundy++;
+    if(draw)
+    {
+        updatePlayer(Player);
+        animatePlayer(Player);
 
-    if(keys[W] && Player->colisionUp)
-        Player->boundy--;
+        for(i = 0; i < curMap->numLinhas; i++)
+        {
+            for(j = 0; j < curMap->numColunas; j++)
+                if(((curMap->x + (j * curMap->blockWidth) + curMap->blockWidth) >= 0)&&((curMap->y + (i * curMap->blockHeight) + curMap->blockHeight)>= 0)&&((curMap->x + j * curMap->blockWidth) < DISPLAY_WIDTH)&&((curMap->y + i * curMap->blockHeight) < DISPLAY_HEIGHT))
+                {
+                    switch(curMap->Blocos[i][j])
+                    {
+                    case 0: // AR
+                        break;
+                    case 1: // Terra
+                        if(curMap->Blocos[i-1][j] == 0)
+                            al_draw_scaled_bitmap(Blocos, 0, 0, 128, 128, curMap->x + j * curMap->blockWidth, curMap->y + i * curMap->blockHeight, curMap->blockWidth, curMap->blockHeight, 0);
+                        else
+                            al_draw_scaled_bitmap(Blocos, (curMap->Blocos[i][j] * 128), 0, 128, 128, curMap->x + j * curMap->blockWidth, curMap->y + i * curMap->blockHeight, curMap->blockWidth, curMap->blockHeight, 0);
+                        break;
+                    case 2: // Pedra
+                        al_draw_scaled_bitmap(Blocos, (curMap->Blocos[i][j] * 128), 0, 128, 128, curMap->x + j * curMap->blockWidth, curMap->y + i * curMap->blockHeight, curMap->blockWidth, curMap->blockHeight, 0);
+                        break;
+                    case 3: // Metal
+                        al_draw_scaled_bitmap(Blocos, (curMap->Blocos[i][j] * 128), 0, 128, 128, curMap->x + j * curMap->blockWidth, curMap->y + i * curMap->blockHeight, curMap->blockWidth, curMap->blockHeight, 0);
+                        break;
+                    case 4: // Silicio
+                        al_draw_scaled_bitmap(Blocos, (curMap->Blocos[i][j] * 128), 0, 128, 128, curMap->x + j * curMap->blockWidth, curMap->y + i * curMap->blockHeight, curMap->blockWidth, curMap->blockHeight, 0);
+                        break;
+                    case 5: // Player Spawner
+                        al_draw_scaled_bitmap(Blocos,(curMap->Blocos[i][j] * 128), 0, 128, 128, curMap->x + j * curMap->blockWidth, curMap->y + i * curMap->blockHeight, curMap->blockWidth, curMap->blockHeight, 0);
+                        break;
+                    case 6: // Monster spawner
+                        al_draw_scaled_bitmap(Blocos,(curMap->Blocos[i][j] * 128), 0, 128, 128, curMap->x + j * curMap->blockWidth, curMap->y + i * curMap->blockHeight, curMap->blockWidth, curMap->blockHeight, 0);
+                        break;
+                    }
+                }
+        }
 
-    if(keys[A])
-        Player->direction = 1;
+        //al_draw_filled_rectangle(Player->boundx, Player->boundy, Player->boundx + Player->width, Player->boundy + Player->height, al_map_rgb(COR_LIMITS));
 
-    if(keys[D])
-        Player->direction = 0;
+        // DRAW BORDERS
+        if(SHOW_BORDER)
+        {
+            /*al_draw_textf(arial_24, al_map_rgb(COR_BORDAS), 50, 50, 0, "Player->jump = %d", Player->jump);
+            al_draw_textf(arial_24, al_map_rgb(COR_BORDAS), 50, 75, 0, "Colision Down = %d", colisionDown);*/
 
-    Player->colisionDown = !detectColisionDown_Matriz(Player, curMap);
-    Player->colisionUp = !detectColisionUp_Matriz(Player, curMap);
 
-    updatePlayer(Player);
-    al_draw_rectangle(Player->boundx, Player->boundy, Player->boundx2, Player->boundy2, al_map_rgb(255, 255, 255), 1);
-    DrawPlayer(Player);
+            al_draw_rectangle(curMap->x + mouse.coluna * curMap->blockWidth, curMap->y + mouse.linha * curMap->blockHeight, curMap->x + (mouse.coluna * curMap->blockWidth) + curMap->blockWidth, curMap->y + (mouse.linha * curMap->blockHeight) + curMap->blockHeight, al_map_rgb(255, 0, 255), 1);
+            al_draw_rectangle(1, 1, DISPLAY_WIDTH, DISPLAY_HEIGHT, al_map_rgb(255, 0, 255), 1);
+            if(SHOW_MAP_LIMITS)
+                al_draw_rectangle(curMap->x, curMap->y, (curMap->x + (curMap->numColunas * curMap->blockWidth)), (curMap->y + (curMap->numLinhas * curMap->blockHeight)), al_map_rgb(255, 0, 255), 1);
+        }
 
-    al_flip_display();
-    al_clear_to_color(al_map_rgb(0,0,0));
+        // DRAW SELECTED BLOCK PREVIEW
+        switch(mouse.selectedBlock)
+        {
+        case 1: // Terra
+            if(curMap->Blocos[i-1][j] == 0)
+                al_draw_scaled_bitmap(Blocos, 0, 0, 128, 128, DISPLAY_WIDTH - (10 + curMap->blockWidth), 10, curMap->blockWidth, curMap->blockHeight, 0);
+            else
+                al_draw_scaled_bitmap(Blocos, (mouse.selectedBlock * 128), 0, 128, 128, DISPLAY_WIDTH - (10 + curMap->blockWidth), 10, curMap->blockWidth, curMap->blockHeight, 0);
+            break;
+        case 2: // Pedra
+            al_draw_scaled_bitmap(Blocos, (mouse.selectedBlock * 128), 0, 128, 128, DISPLAY_WIDTH - (10 + curMap->blockWidth), 10, curMap->blockWidth, curMap->blockHeight, 0);
+            break;
+        case 3: // Metal
+            al_draw_scaled_bitmap(Blocos, (mouse.selectedBlock * 128), 0, 128, 128, DISPLAY_WIDTH - (10 + curMap->blockWidth), 10, curMap->blockWidth, curMap->blockHeight, 0);
+            break;
+        case 4: // Silicio
+            al_draw_scaled_bitmap(Blocos, (mouse.selectedBlock * 128), 0, 128, 128, DISPLAY_WIDTH - (10 + curMap->blockWidth), 10, curMap->blockWidth, curMap->blockHeight, 0);
+            break;
+        case 5: // Player Spawner
+            al_draw_scaled_bitmap(Blocos, (mouse.selectedBlock * 128), 0, 128, 128, DISPLAY_WIDTH - (10 + curMap->blockWidth), 10, curMap->blockWidth, curMap->blockHeight, 0);
+            break;
+        case 6: // Monster spawner
+            al_draw_scaled_bitmap(Blocos, (mouse.selectedBlock * 128), 0, 128, 128, DISPLAY_WIDTH - (10 + curMap->blockWidth), 10, curMap->blockWidth, curMap->blockHeight, 0);
+            break;
+        }
+
+        DrawPlayer(Player);
+
+        if(PickaxeCursor == 1)
+            al_draw_bitmap(pickaxeCursor, mouse.x, (mouse.y + 6), ALLEGRO_FLIP_HORIZONTAL);
+        if(PickaxeCursor == 0)
+            al_draw_bitmap(idleCursor, (mouse.x - 16), (mouse.y - 6), 0);
+
+        if(SHOW_BORDER)
+            al_draw_rectangle(DISPLAY_WIDTH - (10 + curMap->blockWidth), 10, DISPLAY_WIDTH - 10, 10 + curMap->blockHeight, al_map_rgb(255, 255, 255), 1);
+
+    }
 
     return 3;
 }
@@ -970,7 +1261,7 @@ int gamePause(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *
     if(!readMenu)
         al_start_timer(menuTimer);
 
-    return 6;
+    return 0;
 }
 
 int mapCreatorMenu1(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *Background, struct Maps *curMap)
@@ -1180,7 +1471,6 @@ int mapCreator(struct Maps *curMap, ALLEGRO_BITMAP *background, ALLEGRO_BITMAP *
     mouse.coluna = (mouse.x - curMap->x)/(curMap->blockWidth);
     mouse.linha = (mouse.y - curMap->y)/(curMap->blockHeight);
 
-
     // READ MOUSE WHEEL MOVEMENT
     if(mouse.wheelNow > mouse.wheelBefore)
     {
@@ -1372,8 +1662,73 @@ int mapCreator(struct Maps *curMap, ALLEGRO_BITMAP *background, ALLEGRO_BITMAP *
     return 7;
 }
 
-int mapCreatorPause(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *Background)
+int mapCreatorPause(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *Background, struct Maps *curMap)
 {
+
+    al_draw_scaled_bitmap(Background, 0, 0, 1000, 500, -200, -50, 1800, 950, 0);
+    al_draw_scaled_bitmap(Image, 0, 0, 1600, 900, 0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT,0);
+
+    if(selectedOption == 0)
+    {
+        al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 80, 453, 148, 0);
+    }
+    else if(selectedOption == 1)
+    {
+        al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 281, 453, 148, 0);
+    }
+    else if(selectedOption == 2)
+    {
+        al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 477, 453, 148, 0);
+    }
+    else if(selectedOption == 3)
+    {
+        al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 671, 453, 148, 0);
+    }
+
+    if(readMenu)
+    {
+        readMenu = false;
+        if(keys[ENTER])
+        {
+            keys[ENTER] = false;
+            switch (selectedOption)
+            {
+            case 0:
+                selectedOption = 0;
+                return 7;
+                break;
+            case 1:
+                selectedOption = 0;
+                saveMap(curMap);
+                return 8;
+                break;
+            case 2:
+                selectedOption = 0;
+                curMap->loaded = true;
+                return 3;
+                break;
+            case 3:
+                selectedOption = 0;
+                return 0;
+                break;
+            }
+        }
+        if(keys[W] || keys[UP])
+            selectedOption--;
+        else if(keys[S] || keys[DOWN])
+            selectedOption++;
+        else
+            readMenu = true;
+    }
+
+    if(selectedOption > 3)
+        selectedOption = 0;
+    if(selectedOption < 0)
+        selectedOption = 3;
+
+    if(!readMenu)
+        al_start_timer(menuTimer);
+
     return 8;
 }
 
@@ -1844,20 +2199,154 @@ void readInputs()
     }
 }
 
-void saveMap()
+void saveMap(struct Maps *curMap)
 {
+    FILE *fp;
+    ALLEGRO_FILECHOOSER *file;
 
+    int j, i;
+
+    file = al_create_native_file_dialog("", "Choose File location and name", "*.txt",ALLEGRO_FILECHOOSER_MULTIPLE);
+    al_show_native_file_dialog(display, file);
+    char mapNameTxt[100] = "";
+
+    if(al_get_native_file_dialog_count(file) != 0)
+    {
+        const char *mapName = al_get_native_file_dialog_path(file, 0);
+
+        strcpy(mapNameTxt, mapName);
+
+        if((mapNameTxt[strlen(mapNameTxt)-1] != 't')||(mapNameTxt[strlen(mapNameTxt)-2] != 'x')||(mapNameTxt[strlen(mapNameTxt)-3] != 't')||(mapNameTxt[strlen(mapNameTxt)-4] != '.'))
+            strcat(mapNameTxt, ".txt");
+
+        // SAVE MAP TO FILE
+        fp = fopen(mapNameTxt, "w");
+        fprintf(fp, "%d %d %d\n", curMap->numLinhas, curMap->numColunas, curMap->numEnemies);
+        for(i = 0; i < curMap->numLinhas; i++)
+        {
+            for(j = 0; j < curMap->numColunas; j++)
+                fprintf(fp, "%d ", curMap->Blocos[i][j]);
+            fprintf(fp, "\n");
+        }
+        fclose(fp);
+    }
 }
 
 
 int detectColisionRight_Matriz(struct Players *Player, struct Maps *curMap)
 {
-    return 0;
+    int linhaAtual, colunaAtual;
+    struct Bloco curBlock;
+    bool result = 0;
+
+    updatePlayer(Player);
+
+    for(linhaAtual = 0; linhaAtual < curMap->numLinhas; linhaAtual++)
+    {
+        curBlock.y = curMap->y + (curMap->blockHeight * linhaAtual);
+        curBlock.y2 = curBlock.y + curMap->blockHeight - 1;
+
+        for(colunaAtual = 0; colunaAtual < curMap->numColunas; colunaAtual++)
+        {
+            curBlock.x = curMap->x + (curMap->blockWidth * colunaAtual);
+            curBlock.x2 = curBlock.x + curMap->blockWidth - 1;
+
+            if((curBlock.x >= 0) && (curBlock.y >= 0) && ((curBlock.x + curMap->blockWidth) <= DISPLAY_WIDTH) && ((curBlock.y + curMap->blockHeight) <= DISPLAY_HEIGHT))
+            {
+                if((Player->boundx2 >= (curBlock.x - 1)) && (Player->boundx2 <= curBlock.x2))
+                {
+                    if(((Player->boundy2 > curBlock.y) && (Player->boundy2 <= curBlock.y2))
+                            || ((Player->boundy >= curBlock.y) && (Player->boundy <= curBlock.y2))
+                            || ((Player->boundy <= curBlock.y) && (Player->boundy2 >= curBlock.y2)))
+                    {
+                        switch(curMap->Blocos[linhaAtual][colunaAtual])
+                        {
+                        case 0: // AR
+                        case 5: // AGUA
+                        case 6: // AGUA
+                            result |= 0;
+                            break;
+                        case 1: // TERRA
+                        case 2: // PEDRA
+                        case 3: // SILICIO
+                        case 4: // LAVA
+                            result |= 1;
+                            while((Player->boundx + Player->width - 1) >= curBlock.x)
+                                Player->boundx--;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if(Player->boundx2 >= DISPLAY_WIDTH){
+        Player->boundx = DISPLAY_WIDTH - Player->width + 1;
+        result = 1;
+    }
+
+    updatePlayer(Player);
+
+    return result;
 }
 
 int detectColisionLeft_Matriz(struct Players *Player, struct Maps *curMap)
 {
-    return 0;
+    int linhaAtual, colunaAtual;
+    struct Bloco curBlock;
+    bool result = 0;
+
+    updatePlayer(Player);
+
+    for(linhaAtual = 0; linhaAtual < curMap->numLinhas; linhaAtual++)
+    {
+        curBlock.y = curMap->y + (curMap->blockHeight * linhaAtual);
+        curBlock.y2 = curBlock.y + curMap->blockHeight - 1;
+
+        for(colunaAtual = 0; colunaAtual < curMap->numColunas; colunaAtual++)
+        {
+            curBlock.x = curMap->x + (curMap->blockWidth * colunaAtual);
+            curBlock.x2 = curBlock.x + curMap->blockWidth - 1;
+
+            if((curBlock.x >= 0) && (curBlock.y >= 0) && ((curBlock.x + curMap->blockWidth) <= DISPLAY_WIDTH) && ((curBlock.y + curMap->blockHeight) <= DISPLAY_HEIGHT))
+            {
+                if((Player->boundx >= curBlock.x - 1) && (Player->boundx <= (curBlock.x2 + 1)))
+                {
+                    if(((Player->boundy2 > curBlock.y) && (Player->boundy2 <= curBlock.y2))
+                            || ((Player->boundy >= curBlock.y) && (Player->boundy <= curBlock.y2))
+                            || ((Player->boundy <= curBlock.y) && (Player->boundy2 >= curBlock.y2)))
+                    {
+                        switch(curMap->Blocos[linhaAtual][colunaAtual])
+                        {
+                        case 0: // AR
+                        case 5: // AGUA
+                        case 6: // AGUA
+                            result |= 0;
+                            break;
+                        case 1: // TERRA
+                        case 2: // PEDRA
+                        case 3: // SILICIO
+                        case 4: // LAVA
+                            result |= 1;
+                            while(Player->boundx <= curBlock.x2)
+                                Player->boundx++;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if(Player->boundx <= 0){
+        Player->boundx = 0;
+        result = 1;
+    }
+
+    updatePlayer(Player);
+
+    return result;
 }
 
 int detectColisionUp_Matriz(struct Players *Player, struct Maps *curMap)
@@ -1889,16 +2378,17 @@ int detectColisionUp_Matriz(struct Players *Player, struct Maps *curMap)
                         switch(curMap->Blocos[linhaAtual][colunaAtual])
                         {
                         case 0: // AR
+                        case 5: // AGUA
+                        case 6: // AGUA
                             result |= 0;
                             break;
                         case 1: // TERRA
                         case 2: // PEDRA
                         case 3: // SILICIO
-                            result |= 1;
-                            break;
                         case 4: // LAVA
-                        case 5: // AGUA
-                            result |= 0;
+                            result |= 1;
+                            while(Player->boundy <= curBlock.y2)
+                                Player->boundy++;
                             break;
                         }
                     }
@@ -1907,11 +2397,12 @@ int detectColisionUp_Matriz(struct Players *Player, struct Maps *curMap)
         }
     }
 
-    if(Player->boundy < 0)
-    {
+    if(Player->boundy <= 0){
         Player->boundy = 0;
         result = 1;
     }
+
+    updatePlayer(Player);
 
     return result;
 }
@@ -1946,16 +2437,17 @@ int detectColisionDown_Matriz(struct Players *Player, struct Maps *curMap)
                         switch(curMap->Blocos[linhaAtual][colunaAtual])
                         {
                         case 0: // AR
+                        case 5: // AGUA
+                        case 6: // AGUA
                             result |= 0;
                             break;
                         case 1: // TERRA
                         case 2: // PEDRA
                         case 3: // SILICIO
-                            result |= 1;
-                            break;
                         case 4: // LAVA
-                        case 5: // AGUA
-                            result |= 0;
+                            result |= 1;
+                            while((Player->boundy + Player->height - 1) >= curBlock.y)
+                                Player->boundy--;
                             break;
                         }
                     }
@@ -1964,12 +2456,17 @@ int detectColisionDown_Matriz(struct Players *Player, struct Maps *curMap)
         }
     }
 
-    if(Player->boundy2 > DISPLAY_HEIGHT)
-    {
+    if(Player->boundy2 >= DISPLAY_HEIGHT){
         Player->boundy = DISPLAY_HEIGHT - Player->height + 1;
         result = 1;
     }
 
+    updatePlayer(Player);
+
     return result;
 }
 
+float CheckDistance(int x1, int y1, int x2, int y2)
+{
+    return sqrt(pow((float)x1 - x2, 2) + pow((float)y1 - y2, 2));
+}
