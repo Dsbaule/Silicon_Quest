@@ -88,6 +88,11 @@ struct Maps
     int numColunas;
     int numLinhas;
 
+    int numEnemies;
+    bool hasPlayer;
+
+    bool loaded;
+
     int blockWidth;
     int blockHeight;
 
@@ -141,8 +146,8 @@ struct Mouses
 
     int cursor;
 
-    int blockX;
-    int blockY;
+    int linha;
+    int coluna;
 
     int selectedBlock;
 };
