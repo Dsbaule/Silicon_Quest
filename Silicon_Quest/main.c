@@ -41,7 +41,7 @@
 #define SHOW_BORDER     1
 #define SHOW_MAP_LIMITS 1
 // Definições do mapa
-#define MAX_ENEMIES 100
+#define MAX_ENEMIES 5
 #define NUM_BLOCOS  7
 #define PLAYER_SCALE 3
 #define GRAVITY     0.6
@@ -89,6 +89,10 @@ bool draw = false;
 struct Maps Map = {0};
 int selectedOption = 0;
 
+bool warning = false;
+int warningTime = 0;
+char warningText[30] = "";
+
 //--------------------------------------------------
 // Definição das funções utilizadas
 //--------------------------------------------------
@@ -134,7 +138,7 @@ int mapCreatorMenu2(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BI
 int mapCreatorPause(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *Background);
 
 int game();
-int mapCreator(struct Maps *curMap, ALLEGRO_BITMAP *background, ALLEGRO_BITMAP *Blocos);
+int mapCreator(struct Maps *curMap, ALLEGRO_BITMAP *background, ALLEGRO_BITMAP *Blocos, ALLEGRO_BITMAP *frame, ALLEGRO_FONT *font);
 
 int checkEvents();
 void readInputs();
@@ -163,6 +167,8 @@ int main()
     ALLEGRO_BITMAP *expImage;
 
     ALLEGRO_BITMAP *frameMenu = NULL;
+    ALLEGRO_BITMAP *frame = NULL;
+
 
     ALLEGRO_BITMAP *mainMenuImage = NULL;
 
@@ -238,6 +244,7 @@ int main()
     blockCracks = al_load_bitmap("Bitmaps/BlockCracks.png");
 
     frameMenu = al_load_bitmap("Bitmaps/FrameMenu.png");
+    frame = al_load_bitmap("Bitmaps/Frame.png");
 
     mainMenuImage = al_load_bitmap("Bitmaps/MainMenu.png");
 
@@ -304,7 +311,7 @@ int main()
                 InitMap(&Map, &Player, Enemy);
         }
         else if(gameState == 7)
-            gameState = mapCreator(&Map, background, blocos);
+            gameState = mapCreator(&Map, background, blocos, frame, arial_18);
         else if(gameState == 8)
             gameState = mapCreatorPause(gameMenuImage, frameMenu, background);
         else
@@ -332,6 +339,8 @@ int main()
     al_destroy_bitmap(idleCursor);
 
     al_destroy_bitmap(frameMenu);
+    al_destroy_bitmap(frame);
+
     al_destroy_bitmap(mainMenuImage);
     al_destroy_bitmap(gameMenuImage);
     al_destroy_bitmap(gamePauseImage);
@@ -1144,10 +1153,9 @@ int mapCreatorMenu2(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BI
     return 6;
 }
 
-int mapCreator(struct Maps *curMap, ALLEGRO_BITMAP *background, ALLEGRO_BITMAP *Blocos)
+int mapCreator(struct Maps *curMap, ALLEGRO_BITMAP *background, ALLEGRO_BITMAP *Blocos, ALLEGRO_BITMAP *frame, ALLEGRO_FONT *font)
 {
     int i, j;
-
 
     if(mouse.x < 0)
         mouse.x = 0;
@@ -1192,21 +1200,65 @@ int mapCreator(struct Maps *curMap, ALLEGRO_BITMAP *background, ALLEGRO_BITMAP *
 
     if(keys[MOUSE_1])
     {
-        if((mouse.selectedBlock == 5)&&(curMap->hasPlayer == false))
+        if(mouse.selectedBlock < 5)
         {
-            curMap->hasPlayer == true;
-            curMap->Blocos[mouse.linha][mouse.coluna] = mouse.selectedBlock;
+            if(curMap->Blocos[mouse.linha + 1][mouse.coluna] != 5)
+            {
+                if(curMap->Blocos[mouse.linha][mouse.coluna] == 5)
+                    curMap->hasPlayer = false;
+                else if(curMap->Blocos[mouse.linha][mouse.coluna] == 6)
+                    curMap->numEnemies--;
+                curMap->Blocos[mouse.linha][mouse.coluna] = mouse.selectedBlock;
+            }
+            else
+            {
+                warning = true;
+                warningTime = 0;
+                strcpy (warningText, "Voce nao deve bloquear o spawner para players!");
+            }
         }
-        else if((mouse.selectedBlock == 6)&&(curMap->numEnemies < MAX_ENEMIES))
+        else if((mouse.selectedBlock == 5)&&(curMap->hasPlayer == false))
+        {
+            if(curMap->Blocos[mouse.linha - 1][mouse.coluna] == 0)
+            {
+                if(curMap->Blocos[mouse.linha][mouse.coluna] == 6)
+                    curMap->numEnemies++;
+                curMap->hasPlayer = true;
+                curMap->Blocos[mouse.linha][mouse.coluna] = mouse.selectedBlock;
+            }
+            else
+            {
+                warning = true;
+                warningTime = 0;
+                strcpy (warningText, "Nao ha espaco para um spawner aqui!");
+            }
+        }
+        else if((mouse.selectedBlock == 5)&&(curMap->hasPlayer == true))
+        {
+            warning = true;
+            warningTime = 0;
+            strcpy (warningText, "Ja existe um spawner para players!");
+        }
+        else if((mouse.selectedBlock == 6)&&(curMap->numEnemies < MAX_ENEMIES)&&(curMap->Blocos[mouse.linha][mouse.coluna] != 6))
         {
             curMap->numEnemies++;
             curMap->Blocos[mouse.linha][mouse.coluna] = mouse.selectedBlock;
         }
-        else
-            curMap->Blocos[mouse.linha][mouse.coluna] = mouse.selectedBlock;
+        else if((mouse.selectedBlock == 6)&&(curMap->numEnemies >= MAX_ENEMIES))
+        {
+            warning = true;
+            warningTime = 0;
+            strcpy (warningText, "Ja foi ultrapassado o limite de spawners para monstros!");
+        }
     }
     if(keys[MOUSE_2])
+    {
+        if(curMap->Blocos[mouse.linha][mouse.coluna] == 5)
+            curMap->hasPlayer = false;
+        else if(curMap->Blocos[mouse.linha][mouse.coluna] == 6)
+            curMap->numEnemies--;
         curMap->Blocos[mouse.linha][mouse.coluna] = 0;
+    }
 
     if(movement)
     {
@@ -1221,15 +1273,34 @@ int mapCreator(struct Maps *curMap, ALLEGRO_BITMAP *background, ALLEGRO_BITMAP *
         if((keys[DOWN] || keys[S]) && (((curMap->y + (curMap->numLinhas * curMap->blockHeight)) > DISPLAY_HEIGHT)))
             curMap->y -= MOVEMENT_STEP + (2 * keys[SHIFT]);
 
+        if(curMap->x > 0)
+            curMap->x = 0;
+        if(curMap->y > 0)
+            curMap->y = 0;
+        if((curMap->x + (curMap->numColunas * curMap->blockWidth)) < DISPLAY_WIDTH)
+            curMap->x = DISPLAY_WIDTH - (curMap->numColunas * curMap->blockWidth);
+        if((curMap->y + (curMap->numLinhas * curMap->blockHeight)) < DISPLAY_HEIGHT)
+            curMap->y = DISPLAY_HEIGHT - (curMap->numLinhas * curMap->blockHeight);
+
         movement = false;
     }
 
-    if(keys[P])
+    if(keys[P] || keys[ESC])
         return 8;
-
 
     if(draw)
     {
+        if(warning && (warningTime < 60))
+        {
+            warningTime++;
+            al_draw_textf(font, al_map_rgb(255, 255, 255), DISPLAY_WIDTH/2, 25, ALLEGRO_ALIGN_CENTRE, "%s", warningText);
+        }
+        else
+        {
+            warningTime = 0;
+            warning = false;
+        }
+
         for(i = 0; i < curMap->numLinhas; i++)
         {
             for(j = 0; j < curMap->numColunas; j++)
@@ -1264,12 +1335,6 @@ int mapCreator(struct Maps *curMap, ALLEGRO_BITMAP *background, ALLEGRO_BITMAP *
                 }
         }
 
-        // DRAW BORDERS
-        if(SHOW_BORDER)
-        {
-            ;
-        }
-
         // DRAW SELECTED BLOCK PREVIEW
         switch(mouse.selectedBlock)
         {
@@ -1292,12 +1357,16 @@ int mapCreator(struct Maps *curMap, ALLEGRO_BITMAP *background, ALLEGRO_BITMAP *
             al_draw_scaled_bitmap(Blocos, (mouse.selectedBlock * 128), 0, 128, 128, DISPLAY_WIDTH - (10 + curMap->blockWidth), 10, curMap->blockWidth, curMap->blockHeight, 0);
             break;
         case 6: // Monster spawner
-            al_draw_scaled_bitmap(Blocos, (mouse.selectedBlock * 128), 0, 128, 128, curMap->x + j * curMap->blockWidth, curMap->y + i * curMap->blockHeight, curMap->blockWidth, curMap->blockHeight, 0);
+            al_draw_scaled_bitmap(Blocos, (mouse.selectedBlock * 128), 0, 128, 128, DISPLAY_WIDTH - (10 + curMap->blockWidth), 10, curMap->blockWidth, curMap->blockHeight, 0);
             break;
         }
 
+        // DRAW BORDERS
         if(SHOW_BORDER)
-            al_draw_rectangle(DISPLAY_WIDTH - (10 + curMap->blockWidth), 10, DISPLAY_WIDTH - 10, 10 + curMap->blockHeight, al_map_rgb(255, 255, 255), 1);
+        {
+            al_draw_scaled_bitmap(frame, 0, 0, 128, 128, DISPLAY_WIDTH - (10 + curMap->blockWidth), 10, curMap->blockWidth, curMap->blockHeight, 0);
+            al_draw_scaled_bitmap(frame, 0, 0, 128, 128, (curMap->x + (mouse.coluna * curMap->blockWidth)), (curMap->y + (mouse.linha * curMap->blockHeight)), curMap->blockWidth, curMap->blockHeight, 0);
+        }
     }
 
     return 7;
