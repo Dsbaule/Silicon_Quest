@@ -57,20 +57,17 @@ struct Enemies
 {
 	int x;
 	int y;
-	int lives;
-	int speed;
 	int boundx;
 	int boundy;
-	int score;
+	int centerx;
+	int centery;
 
-	int maxFrame;
-	int curFrame;
-	int frameCount;
-	int frameDelay;
-	int frameWidth;
-	int frameHeight;
-	int animationColumns;
-	int animationDirection;
+	int direction;
+	int state;
+
+	struct Sprite_Animation idle;
+	struct Sprite_Animation Running;
+	struct Sprite_Animation Exploding;
 
 	int animationRow;
 };
@@ -91,6 +88,7 @@ struct Maps
     int numLinhas;
 
     int numEnemies;
+    int numSilicio;
     bool hasPlayer;
 
     bool loaded;
