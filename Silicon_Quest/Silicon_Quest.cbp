@@ -35,12 +35,12 @@
 		</Build>
 		<Compiler>
 			<Add option="-Wall" />
+			<Add directory="C:/CodeBlocks/MinGW/allegro5/include" />
 		</Compiler>
-		<Unit filename="Animation.h" />
-		<Unit filename="Colision.h">
-			<Option target="&lt;{~None~}&gt;" />
-		</Unit>
-		<Unit filename="FileIO.h" />
+		<Linker>
+			<Add library="C:\CodeBlocks\MinGW\allegro5\bin\allegro-5.0.10-monolith-mt.dll" />
+			<Add directory="C:/CodeBlocks/MinGW/allegro5/lib" />
+		</Linker>
 		<Unit filename="Structs.h" />
 		<Unit filename="main.c">
 			<Option compilerVar="CC" />
@@ -49,6 +49,7 @@
 			<code_completion />
 			<envvars />
 			<debugger />
+			<lib_finder disable_auto="1" />
 		</Extensions>
 	</Project>
 </CodeBlocks_project_file>

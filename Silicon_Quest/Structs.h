@@ -1,43 +1,148 @@
-#define MAX_LINHAS  500
-#define MAX_COLUNAS 500
+#define MAX_COLUNAS 2500
+#define MAX_LINHAS  2500
 
-struct Object
+#define MAX_NAME_SIZE 25
+
+
+struct Sprite_Animation
 {
-    int x;
-    int y;
+    ALLEGRO_BITMAP *Image;
 
-    int width;
-    int height;
-
-    int x2;
-    int y2;
-
-    float   force;
-    bool    jump;
+    int maxFrame;
+    int curFrame;
+    int frameCount;
+    int frameDelay;
+    int frameWidth;
+    int frameHeight;
 };
 
-struct mapValues
+struct Players
+{
+	int x;
+	int y;
+	int boundx;
+	int boundy;
+	int width;
+	int height;
+	int boundx2;
+	int boundy2;
+
+	bool jump;
+	float force;
+
+	bool colisionUp;
+	bool colisionDown;
+	bool colisionLeft;
+	bool colisionRight;
+
+	int silicio;
+
+	int tresHold;
+	int miningSpeed;
+
+	struct Sprite_Animation running;
+    struct Sprite_Animation idle;
+    struct Sprite_Animation dying;
+    struct Sprite_Animation mining;
+    struct Sprite_Animation standing;
+    struct Sprite_Animation blockCracking;
+
+	int direction;
+	int state;
+};
+
+struct Enemies
+{
+	int x;
+	int y;
+	int lives;
+	int speed;
+	int boundx;
+	int boundy;
+	int score;
+
+	int maxFrame;
+	int curFrame;
+	int frameCount;
+	int frameDelay;
+	int frameWidth;
+	int frameHeight;
+	int animationColumns;
+	int animationDirection;
+
+	int animationRow;
+};
+
+/* A ser implementado
+struct Bullets
+{
+    ;
+};
+*/
+
+struct Maps
 {
     int x;
     int y;
 
-    int numLinhas;
     int numColunas;
+    int numLinhas;
 
     int blockWidth;
     int blockHeight;
 
-    int8_t blocos[MAX_LINHAS][MAX_COLUNAS];
+    int8_t Blocos[MAX_LINHAS][MAX_COLUNAS];
 };
 
-struct mouseValues
+struct Bloco
+{
+    int x;
+    int y;
+    int x2;
+    int y2;
+};
+
+struct Explosions
+{
+	int x;
+	int y;
+	bool live;
+
+	int maxFrame;
+	int curFrame;
+	int frameCount;
+	int frameDelay;
+	int frameWidth;
+	int frameHeight;
+	int animationColumns;
+	int animationDirection;
+
+	ALLEGRO_BITMAP *image;
+};
+
+struct Backgrounds
+{
+	float x;
+	float y;
+
+	int width;
+	int height;
+
+	ALLEGRO_BITMAP *image;
+};
+
+struct Mouses
 {
     int x;
     int y;
 
-    int mouseWheelNow;
-    int mouseWheelBefore;
+    int wheelNow;
+    int wheelBefore;
 
-    int linha;
-    int coluna;
+    int cursor;
+
+    int blockX;
+    int blockY;
+
+    int selectedBlock;
 };
