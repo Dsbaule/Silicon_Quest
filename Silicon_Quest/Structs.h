@@ -1,7 +1,7 @@
 #define MAX_COLUNAS 2500
 #define MAX_LINHAS  2500
 
-#define MAX_NAME_SIZE 25
+#define MAX_ENEMIES 100
 
 
 struct Sprite_Animation
@@ -55,15 +55,16 @@ struct Players
 
 struct Enemies
 {
-	int x;
-	int y;
-	int boundx;
-	int boundy;
-	int centerx;
-	int centery;
+	int x[MAX_ENEMIES];
+	int y[MAX_ENEMIES];
+	int boundx[MAX_ENEMIES];
+	int boundy[MAX_ENEMIES];
+	int centerx[MAX_ENEMIES];
+	int centery[MAX_ENEMIES];
 
-	int direction;
-	int state;
+	int direction[MAX_ENEMIES];
+	int state[MAX_ENEMIES];
+	bool active[MAX_ENEMIES];
 
 	struct Sprite_Animation idle;
 	struct Sprite_Animation Running;

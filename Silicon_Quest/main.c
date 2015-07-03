@@ -41,7 +41,6 @@
 #define SHOW_BORDER     1
 #define SHOW_MAP_LIMITS 1
 // Definições do mapa
-#define MAX_ENEMIES 5
 #define NUM_BLOCOS  7
 #define PLAYER_SCALE 3
 #define GRAVITY     0.6
@@ -118,11 +117,11 @@ void UpdateBullet(Bullet bullet[], int size);
 void CollideBullet(Bullet bullet[], int bSize, Comet comets[], int cSize, SpaceShip &ship, Explosion explosions[], int eSize);
 */
 
-void InitEnemy(struct Enemies Enemy[], ALLEGRO_BITMAP *enemyImage);
-void DrawEnemy(struct Enemies Enemy[]);
-void StartEnemy(struct Enemies Enemy[]);
-void UpdateEnemy(struct Enemies Enemy[]);
-void CollideEnemy(struct Enemies Enemy[], struct Players *Player, struct Explosions Explosion[], int eSize);
+void InitEnemy(struct Enemies *Enemy, ALLEGRO_BITMAP *enemyImage);
+void DrawEnemy(struct Enemies *Enemy);
+void StartEnemy(struct Enemies *Enemy);
+void UpdateEnemy(struct Enemies *Enemy);
+void CollideEnemy(struct Enemies *Enemy, struct Players *Player, struct Explosions Explosion[], int eSize);
 
 void InitExplosions(struct Explosions Explosion, int size, ALLEGRO_BITMAP *image);
 void DrawExplosions(struct Explosions Explosion, int size);
@@ -131,7 +130,7 @@ void UpdateExplosions(struct Explosions Explosion, int size);
 
 void DrawBackground(struct Backgrounds *back, struct Maps *curMap);
 
-void InitMap(struct Maps *curMap, struct Players *Player, struct Enemies *Enemy[]);
+void InitMap(struct Maps *curMap, struct Players *Player, struct Enemies *Enemy);
 
 void ChangeState(int *state, int newState);
 
@@ -143,7 +142,7 @@ int mapCreatorMenu1(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BI
 int mapCreatorMenu2(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *Background, struct Maps *curMap, ALLEGRO_FONT *font);
 int mapCreatorPause(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *Background, struct Maps *curMap);
 
-int game(struct Players *Player, struct Maps *curMap, struct Enemies *Enemy[], ALLEGRO_BITMAP *Background, ALLEGRO_BITMAP *Blocos, ALLEGRO_BITMAP *EnemyImage, ALLEGRO_FONT *font, ALLEGRO_FONT *font2);
+int game(struct Players *Player, struct Maps *curMap, struct Enemies *Enemy, ALLEGRO_BITMAP *Background, ALLEGRO_BITMAP *Blocos, ALLEGRO_BITMAP *EnemyImage, ALLEGRO_FONT *font, ALLEGRO_FONT *font2);
 int mapCreator(struct Maps *curMap, ALLEGRO_BITMAP *background, ALLEGRO_BITMAP *Blocos, ALLEGRO_BITMAP *frame, ALLEGRO_FONT *font);
 
 int gameWon(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *Background, struct Maps *curMap);
@@ -174,7 +173,7 @@ int main()
     ALLEGRO_FONT *bankGothic_50 = NULL;
 
     ALLEGRO_BITMAP *enemyImage;
-    ALLEGRO_BITMAP *expImage;
+    //ALLEGRO_BITMAP *expImage;
 
     ALLEGRO_BITMAP *frameMenu = NULL;
     ALLEGRO_BITMAP *frame = NULL;
@@ -231,8 +230,8 @@ int main()
     }
 
     struct Players Player = {0};
-    struct Enemies Enemy[MAX_ENEMIES] = {{0}};
-    struct Explosions Explosion = {0};
+    struct Enemies Enemy = {{0}};
+    //struct Explosions Explosion = {0};
 
     //Setup dos timers
     drawTimer = al_create_timer(1.0 / FPS);
@@ -320,9 +319,9 @@ int main()
             if(!Player.initialized)
             {
                 InitPlayer(&Player, &Map);
-                InitMap(&Map, &Player, Enemy);
+                InitMap(&Map, &Player, &Enemy);
             }
-            gameState = game(&Player, &Map, Enemy, background, blocos, enemyImage, arial_18, bankGothic_50);
+            gameState = game(&Player, &Map, &Enemy, background, blocos, enemyImage, arial_18, bankGothic_50);
             if((gameState != 3)&&(gameState != 4))
                 Player.initialized = false;
         }
@@ -334,14 +333,14 @@ int main()
         {
             gameState = mapCreatorMenu2(mapCreatorMenu2Image, frameMenu, background, &Map, bankGothic_50);
             if(gameState == 7)
-                InitMap(&Map, &Player, Enemy);
+                InitMap(&Map, &Player, &Enemy);
         }
         else if(gameState == 7)
         {
             if(!Player.initialized)
             {
                 InitPlayer(&Player, &Map);
-                InitMap(&Map, &Player, Enemy);
+                InitMap(&Map, &Player, &Enemy);
             }
             gameState = mapCreator(&Map, background, blocos, frame, bankGothic_50);
             if(gameState != 7)
@@ -714,25 +713,25 @@ void updateMapPosition(struct Players *Player, struct Maps *curMap)
     }
 }
 
-void InitEnemy(struct Enemies Enemy[], ALLEGRO_BITMAP *enemyImage)
+void InitEnemy(struct Enemies *Enemy, ALLEGRO_BITMAP *enemyImage)
 {
     int i;
 
     for (i = 0; i<Map.numEnemies; i++)
     {
-        StartEnemy(&Enemy);
-        UpdateEnemy(&Enemy);
+        StartEnemy(Enemy);
+        UpdateEnemy(Enemy);
     }
 }
 
-void animateEnemy(struct Enemies Enemy[], ALLEGRO_BITMAP *enemyImage)
+void animateEnemy(struct Enemies *Enemy, ALLEGRO_BITMAP *enemyImage)
 {
     int i;
 
     for (i = 0; i<Map.numEnemies; i++)
     {
-        StartEnemy(&Enemy);
-        UpdateEnemy(&Enemy);
+        StartEnemy(Enemy);
+        UpdateEnemy(Enemy);
     }
 }
 
@@ -801,7 +800,7 @@ void DrawBackground(struct Backgrounds *back, struct Maps *curMap)
 
 }
 
-void InitMap(struct Maps *curMap, struct Players *Player, struct Enemies *Enemy[])
+void InitMap(struct Maps *curMap, struct Players *Player, struct Enemies *Enemy)
 {
     int i, j;
     int curEnemy = 0;
@@ -831,14 +830,14 @@ void InitMap(struct Maps *curMap, struct Players *Player, struct Enemies *Enemy[
                     Player->boundy = curMap->y + ((i-1) * curMap->blockHeight);
                     updateMapPosition(Player, curMap);
                 }
-
                 if(curMap->Blocos[i][j] == 6)
                 {
                     if(curEnemy < curMap->numEnemies)
                     {
                         curMap->Blocos[i][j] = 0;
-                        Enemy[curEnemy]->boundx = curMap->x + (j * curMap->blockWidth);
-                        Enemy[curEnemy]->boundy = curMap->y + (i * curMap->blockHeight);
+                        Enemy->boundx[i] = curMap->x + (j * curMap->blockWidth);
+                        Enemy->boundy[i] = curMap->y + (i * curMap->blockHeight);
+                        Enemy->active[i] = true;
                         curEnemy++;
                     }
                 }
@@ -1019,7 +1018,7 @@ int gameTutorial(ALLEGRO_BITMAP *Tutorial1, ALLEGRO_BITMAP *Tutorial2, ALLEGRO_B
     return 2;
 }
 
-int game(struct Players *Player, struct Maps *curMap, struct Enemies *Enemy[], ALLEGRO_BITMAP *Background, ALLEGRO_BITMAP *Blocos, ALLEGRO_BITMAP *EnemyImage, ALLEGRO_FONT *font, ALLEGRO_FONT *font2)
+int game(struct Players *Player, struct Maps *curMap, struct Enemies *Enemy, ALLEGRO_BITMAP *Background, ALLEGRO_BITMAP *Blocos, ALLEGRO_BITMAP *EnemyImage, ALLEGRO_FONT *font, ALLEGRO_FONT *font2)
 {
     bool PickaxeCursor = 0;
     int i, j;
@@ -1214,10 +1213,10 @@ int game(struct Players *Player, struct Maps *curMap, struct Enemies *Enemy[], A
 
     for(i = 0; i < curMap->numEnemies; i++)
     {
-        if( Player->x + Player->width > Enemy[i]->x &&
-        Player->x < Enemy[i]->x + 52 &&
-        Player->y + Player->height > Enemy[i]->y &&
-        Player->y < Enemy[i]->y + 42)
+        if( Player->x + Player->width > Enemy->x[i] &&
+        Player->x < Enemy->x[i] + 52 &&
+        Player->y + Player->height > Enemy->y[i] &&
+        Player->y < Enemy->y[i] + 42)
         {
             printf("colidiu\n");
         }
