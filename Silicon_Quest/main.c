@@ -25,9 +25,13 @@
 // Definição dos valores para o compilador
 //--------------------------------------------------
 // Definições da tela
-#define FULLSCREEN      0
+#define FULLSCREEN      1
 #define DISPLAY_WIDTH   1600
 #define DISPLAY_HEIGHT  900
+#define BACKGROUND_SOURCE_WIDTH 1000
+#define BACKGROUND_SOURCE_HEIGHT 500
+#define BACKGROUND_WIDTH   2000
+#define BACKGROUND_HEIGHT  1000
 #define MAX_COLUNAS     2500
 #define MAX_LINHAS      2500
 // Definições dos Timers
@@ -38,7 +42,7 @@
 #define MENU_SPEED      7
 // Definições de desenho
 #define SHOWMOUSE       0
-#define SHOW_BORDER     1
+#define SHOW_BORDER     0
 #define SHOW_MAP_LIMITS 1
 // Definições do mapa
 #define NUM_BLOCOS  7
@@ -128,7 +132,7 @@ void DrawExplosions(struct Explosions Explosion, int size);
 void StartExplosions(struct Explosions Explosion, int size, int x, int y);
 void UpdateExplosions(struct Explosions Explosion, int size);
 
-void DrawBackground(struct Backgrounds *back, struct Maps *curMap);
+void DrawBackground(ALLEGRO_BITMAP *back, struct Maps *curMap);
 
 void InitMap(struct Maps *curMap, struct Players *Player, struct Enemies *Enemy);
 
@@ -504,7 +508,7 @@ void ResetPlayerAnimation(struct Players *Player, int animation)
 
 void DrawPlayer(struct Players *Player)
 {
-    al_draw_rectangle(Player->boundx, Player->boundy, Player->boundx2, Player->boundy2, al_map_rgb(255, 255, 255), 0);
+    //al_draw_rectangle(Player->boundx, Player->boundy, Player->boundx2, Player->boundy2, al_map_rgb(255, 255, 255), 0);
 
     if(Player->mine == true)
     {
@@ -795,8 +799,14 @@ void UpdateExplosions(struct Explosions Explosion, int size)
 
 }
 
-void DrawBackground(struct Backgrounds *back, struct Maps *curMap)
+void DrawBackground(ALLEGRO_BITMAP *back, struct Maps *curMap)
 {
+    int x, y;
+
+    x = ((DISPLAY_WIDTH - BACKGROUND_WIDTH) * curMap->x / (DISPLAY_WIDTH - (curMap->numColunas * curMap->blockWidth)));
+    y = ((DISPLAY_HEIGHT - BACKGROUND_HEIGHT) * curMap->y / (DISPLAY_HEIGHT - (curMap->numLinhas * curMap->blockHeight)));
+
+    al_draw_scaled_bitmap(back, 0, 0, BACKGROUND_SOURCE_WIDTH, BACKGROUND_SOURCE_HEIGHT, x, y, BACKGROUND_WIDTH, BACKGROUND_HEIGHT, 0);
 
 }
 
@@ -879,6 +889,7 @@ int mainMenu(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *B
         readMenu = false;
         if(keys[ENTER])
         {
+            keys[ENTER] = false;
             switch (selectedOption)
             {
             case 0:
@@ -921,20 +932,22 @@ int mainMenu(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *B
 
 int gameMenu(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *Background, struct Maps *curMap)
 {
-    al_draw_scaled_bitmap(Background, 0, 0, 1000, 500, -200, -50, 1800, 950, 0);
-    al_draw_scaled_bitmap(Image, 0, 0, 1600, 900, 0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT,0);
+    if(draw){
+        al_draw_scaled_bitmap(Background, 0, 0, 1000, 500, -200, -50, 1800, 950, 0);
+        al_draw_scaled_bitmap(Image, 0, 0, 1600, 900, 0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT,0);
 
-    if(selectedOption == 0)
-    {
-        al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 435, 453, 148, 0);
-    }
-    else if(selectedOption == 1)
-    {
-        al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 586, 453, 148, 0);
-    }
-    else if(selectedOption == 2)
-    {
-        al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 741, 453, 148, 0);
+        if(selectedOption == 0)
+        {
+            al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 435, 453, 148, 0);
+        }
+        else if(selectedOption == 1)
+        {
+            al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 586, 453, 148, 0);
+        }
+        else if(selectedOption == 2)
+        {
+            al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 741, 453, 148, 0);
+        }
     }
 
     if(readMenu)
@@ -1211,6 +1224,7 @@ int game(struct Players *Player, struct Maps *curMap, struct Enemies *Enemy, ALL
     Player->colisionUp = detectColisionUp_Matriz(Player, curMap);
     Player->colisionDown = detectColisionDown_Matriz(Player, curMap);
 
+    /*
     for(i = 0; i < curMap->numEnemies; i++)
     {
         if( Player->x + Player->width > Enemy->x[i] &&
@@ -1223,6 +1237,7 @@ int game(struct Players *Player, struct Maps *curMap, struct Enemies *Enemy, ALL
         else
             printf("nao colidiu\n");
     }
+    */
 
     if((curMap->x <= 0) && (Player->boundx <= ((DISPLAY_WIDTH/2) - (Player->width/2))))
     {
@@ -1258,6 +1273,8 @@ int game(struct Players *Player, struct Maps *curMap, struct Enemies *Enemy, ALL
     {
         updatePlayer(Player);
         animatePlayer(Player);
+
+        DrawBackground(Background, curMap);
 
         for(i = 0; i < curMap->numLinhas; i++)
         {
@@ -1309,6 +1326,7 @@ int game(struct Players *Player, struct Maps *curMap, struct Enemies *Enemy, ALL
         }
 
         // DRAW SELECTED BLOCK PREVIEW
+        /*
         switch(mouse.selectedBlock)
         {
         case 1: // Terra
@@ -1333,6 +1351,7 @@ int game(struct Players *Player, struct Maps *curMap, struct Enemies *Enemy, ALL
             al_draw_scaled_bitmap(Blocos, (mouse.selectedBlock * 128), 0, 128, 128, DISPLAY_WIDTH - (10 + curMap->blockWidth), 10, curMap->blockWidth, curMap->blockHeight, 0);
             break;
         }
+        */
 
         DrawPlayer(Player);
 
@@ -1355,25 +1374,26 @@ int game(struct Players *Player, struct Maps *curMap, struct Enemies *Enemy, ALL
 
 int gamePause(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *Background, struct Players *Player, struct Maps *curMap, struct Enemies *Enemy)
 {
+    if(draw){
+        al_draw_scaled_bitmap(Background, 0, 0, 1000, 500, -200, -50, 1800, 950, 0);
+        al_draw_scaled_bitmap(Image, 0, 0, 1600, 900, 0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT,0);
 
-    al_draw_scaled_bitmap(Background, 0, 0, 1000, 500, -200, -50, 1800, 950, 0);
-    al_draw_scaled_bitmap(Image, 0, 0, 1600, 900, 0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT,0);
-
-    if(selectedOption == 0)
-    {
-        al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 80, 453, 148, 0);
-    }
-    else if(selectedOption == 1)
-    {
-        al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 281, 453, 148, 0);
-    }
-    else if(selectedOption == 2)
-    {
-        al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 477, 453, 148, 0);
-    }
-    else if(selectedOption == 3)
-    {
-        al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 671, 453, 148, 0);
+        if(selectedOption == 0)
+        {
+            al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 80, 453, 148, 0);
+        }
+        else if(selectedOption == 1)
+        {
+            al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 281, 453, 148, 0);
+        }
+        else if(selectedOption == 2)
+        {
+            al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 477, 453, 148, 0);
+        }
+        else if(selectedOption == 3)
+        {
+            al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 671, 453, 148, 0);
+        }
     }
 
     if(readMenu)
@@ -1426,20 +1446,23 @@ int gamePause(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *
 
 int mapCreatorMenu1(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *Background, struct Maps *curMap)
 {
+
+    if(draw){
     al_draw_scaled_bitmap(Background, 0, 0, 1000, 500, -200, -50, 1800, 950, 0);
     al_draw_scaled_bitmap(Image, 0, 0, 1600, 900, 0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT,0);
 
-    if(selectedOption == 0)
-    {
-        al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 435, 453, 148, 0);
-    }
-    else if(selectedOption == 1)
-    {
-        al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 586, 453, 148, 0);
-    }
-    else if(selectedOption == 2)
-    {
-        al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 741, 453, 148, 0);
+        if(selectedOption == 0)
+        {
+            al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 435, 453, 148, 0);
+        }
+        else if(selectedOption == 1)
+        {
+            al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 586, 453, 148, 0);
+        }
+        else if(selectedOption == 2)
+        {
+            al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 741, 453, 148, 0);
+        }
     }
 
     if(readMenu)
@@ -1447,6 +1470,7 @@ int mapCreatorMenu1(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BI
         readMenu = false;
         if(keys[ENTER])
         {
+            keys[ENTER] = false;
             switch (selectedOption)
             {
             case 0:
@@ -1478,12 +1502,12 @@ int mapCreatorMenu1(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BI
             selectedOption++;
         else
             readMenu = true;
-    }
 
-    if(selectedOption > 2)
-        selectedOption = 0;
-    if(selectedOption < 0)
-        selectedOption = 2;
+        if(selectedOption > 2)
+            selectedOption = 0;
+        if(selectedOption < 0)
+            selectedOption = 2;
+    }
 
     if(!readMenu)
         al_start_timer(menuTimer);
@@ -1493,26 +1517,29 @@ int mapCreatorMenu1(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BI
 
 int mapCreatorMenu2(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *Background, struct Maps *curMap, ALLEGRO_FONT *font)
 {
-    al_draw_scaled_bitmap(Background, 0, 0, 1000, 500, -200, -50, 1800, 950, 0);
-    al_draw_scaled_bitmap(Image, 0, 0, 1600, 900, 0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT,0);
+    if(draw){
+        al_draw_scaled_bitmap(Background, 0, 0, 1000, 500, -200, -50, 1800, 950, 0);
+        al_draw_scaled_bitmap(Image, 0, 0, 1600, 900, 0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT,0);
 
-    if(selectedOption == 0)
-    {
-        al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 281, 453, 148, 0);
-    }
-    else if(selectedOption == 1)
-    {
-        al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 671, 453, 148, 0);
-    }
+        if(selectedOption == 0)
+        {
+            al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 281, 453, 148, 0);
+        }
+        else if(selectedOption == 1)
+        {
+            al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 671, 453, 148, 0);
+        }
 
-    al_draw_textf(font, al_map_rgb(0, 0, 0), DISPLAY_WIDTH/2, 335, ALLEGRO_ALIGN_CENTRE, "%d", curMap->numLinhas);
-    al_draw_textf(font, al_map_rgb(0, 0, 0), DISPLAY_WIDTH/2, 725, ALLEGRO_ALIGN_CENTRE, "%d", curMap->numColunas);
+        al_draw_textf(font, al_map_rgb(0, 0, 0), DISPLAY_WIDTH/2, 335, ALLEGRO_ALIGN_CENTRE, "%d", curMap->numLinhas);
+        al_draw_textf(font, al_map_rgb(0, 0, 0), DISPLAY_WIDTH/2, 725, ALLEGRO_ALIGN_CENTRE, "%d", curMap->numColunas);
+    }
 
     if(readMenu)
     {
         readMenu = false;
         if(keys[ENTER])
         {
+            keys[ENTER] = false;
             selectedOption = 0;
             return 7;
         }
@@ -1750,6 +1777,7 @@ int mapCreator(struct Maps *curMap, ALLEGRO_BITMAP *background, ALLEGRO_BITMAP *
 
     if(draw)
     {
+        DrawBackground(background, curMap);
         if(warning && (warningTime < 60))
         {
             warningTime++;
@@ -1822,11 +1850,9 @@ int mapCreator(struct Maps *curMap, ALLEGRO_BITMAP *background, ALLEGRO_BITMAP *
         }
 
         // DRAW BORDERS
-        if(SHOW_BORDER)
-        {
-            al_draw_scaled_bitmap(frame, 0, 0, 128, 128, DISPLAY_WIDTH - (10 + curMap->blockWidth), 10, curMap->blockWidth, curMap->blockHeight, 0);
-            al_draw_scaled_bitmap(frame, 0, 0, 128, 128, (curMap->x + (mouse.coluna * curMap->blockWidth)), (curMap->y + (mouse.linha * curMap->blockHeight)), curMap->blockWidth, curMap->blockHeight, 0);
-        }
+        al_draw_scaled_bitmap(frame, 0, 0, 128, 128, DISPLAY_WIDTH - (10 + curMap->blockWidth), 10, curMap->blockWidth, curMap->blockHeight, 0);
+        al_draw_scaled_bitmap(frame, 0, 0, 128, 128, (curMap->x + (mouse.coluna * curMap->blockWidth)), (curMap->y + (mouse.linha * curMap->blockHeight)), curMap->blockWidth, curMap->blockHeight, 0);
+
         al_draw_scaled_bitmap(silicon, 0, 0, 328, 207, 10, 10, 60, 60, 0);
         al_draw_textf(font, al_map_rgb(255, 255, 255), 80, 15, 0, "%d", curMap->numSilicio);
     }
@@ -1836,25 +1862,26 @@ int mapCreator(struct Maps *curMap, ALLEGRO_BITMAP *background, ALLEGRO_BITMAP *
 
 int mapCreatorPause(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *Background, struct Maps *curMap)
 {
+    if(draw){
+        al_draw_scaled_bitmap(Background, 0, 0, 1000, 500, -200, -50, 1800, 950, 0);
+        al_draw_scaled_bitmap(Image, 0, 0, 1600, 900, 0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT,0);
 
-    al_draw_scaled_bitmap(Background, 0, 0, 1000, 500, -200, -50, 1800, 950, 0);
-    al_draw_scaled_bitmap(Image, 0, 0, 1600, 900, 0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT,0);
-
-    if(selectedOption == 0)
-    {
-        al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 80, 453, 148, 0);
-    }
-    else if(selectedOption == 1)
-    {
-        al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 281, 453, 148, 0);
-    }
-    else if(selectedOption == 2)
-    {
-        al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 477, 453, 148, 0);
-    }
-    else if(selectedOption == 3)
-    {
-        al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 671, 453, 148, 0);
+        if(selectedOption == 0)
+        {
+            al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 80, 453, 148, 0);
+        }
+        else if(selectedOption == 1)
+        {
+            al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 281, 453, 148, 0);
+        }
+        else if(selectedOption == 2)
+        {
+            al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 477, 453, 148, 0);
+        }
+        else if(selectedOption == 3)
+        {
+            al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 671, 453, 148, 0);
+        }
     }
 
     if(readMenu)
@@ -1906,21 +1933,22 @@ int mapCreatorPause(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BI
 
 int gameWon(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *Background, struct Maps *curMap)
 {
+    if(draw){
+        al_draw_scaled_bitmap(Background, 0, 0, 1000, 500, -200, -50, 1800, 950, 0);
+        al_draw_scaled_bitmap(Image, 0, 0, 1600, 900, 0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT,0);
 
-    al_draw_scaled_bitmap(Background, 0, 0, 1000, 500, -200, -50, 1800, 950, 0);
-    al_draw_scaled_bitmap(Image, 0, 0, 1600, 900, 0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT,0);
-
-    if(selectedOption == 0)
-    {
-        al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 435, 453, 148, 0);
-    }
-    else if(selectedOption == 1)
-    {
-        al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 586, 453, 148, 0);
-    }
-    else if(selectedOption == 2)
-    {
-        al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 741, 453, 148, 0);
+        if(selectedOption == 0)
+        {
+            al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 435, 453, 148, 0);
+        }
+        else if(selectedOption == 1)
+        {
+            al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 586, 453, 148, 0);
+        }
+        else if(selectedOption == 2)
+        {
+            al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 741, 453, 148, 0);
+        }
     }
 
     if(readMenu)
@@ -1972,20 +2000,22 @@ int gameWon(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *Ba
 
 int gameOver(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *Background, struct Maps *curMap)
 {
-    al_draw_scaled_bitmap(Background, 0, 0, 1000, 500, -200, -50, 1800, 950, 0);
-    al_draw_scaled_bitmap(Image, 0, 0, 1600, 900, 0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT,0);
+    if(draw){
+        al_draw_scaled_bitmap(Background, 0, 0, 1000, 500, -200, -50, 1800, 950, 0);
+        al_draw_scaled_bitmap(Image, 0, 0, 1600, 900, 0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT,0);
 
-    if(selectedOption == 0)
-    {
-        al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 435, 453, 148, 0);
-    }
-    else if(selectedOption == 1)
-    {
-        al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 586, 453, 148, 0);
-    }
-    else if(selectedOption == 2)
-    {
-        al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 741, 453, 148, 0);
+        if(selectedOption == 0)
+        {
+            al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 435, 453, 148, 0);
+        }
+        else if(selectedOption == 1)
+        {
+            al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 586, 453, 148, 0);
+        }
+        else if(selectedOption == 2)
+        {
+            al_draw_scaled_bitmap(frameMenu, 0, 0, 453, 149, 574, 741, 453, 148, 0);
+        }
     }
 
     if(readMenu)
