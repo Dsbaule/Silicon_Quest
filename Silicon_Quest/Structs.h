@@ -62,13 +62,11 @@ struct Enemies
 	int centerx[MAX_ENEMIES];
 	int centery[MAX_ENEMIES];
 
-	int direction[MAX_ENEMIES];
-	int state[MAX_ENEMIES];
+	bool direction[MAX_ENEMIES];
+	bool state[MAX_ENEMIES];
 	bool active[MAX_ENEMIES];
 
 	struct Sprite_Animation idle;
-	struct Sprite_Animation Running;
-	struct Sprite_Animation Exploding;
 
 	int animationRow;
 };

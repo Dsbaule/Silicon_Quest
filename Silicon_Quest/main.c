@@ -110,8 +110,6 @@ void animatePlayer(struct Players *Player);
 void updatePlayer(struct Players *Player);
 void ResetPlayerAnimation(struct Players *Player, int animation);
 void DrawPlayer(struct Players *Player);
-void MovePlayerLeft(struct Players *Player);
-void MovePlayerRight(struct Players *Player);
 
 /* To be added - Bullet
 void InitBullet(Bullet bullet[], int size);
@@ -135,8 +133,6 @@ void UpdateExplosions(struct Explosions Explosion, int size);
 void DrawBackground(ALLEGRO_BITMAP *back, struct Maps *curMap);
 
 void InitMap(struct Maps *curMap, struct Players *Player, struct Enemies *Enemy);
-
-void ChangeState(int *state, int newState);
 
 int mainMenu(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *Background);
 int gameMenu(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *Background, struct Maps *curMap);
@@ -630,28 +626,6 @@ void animatePlayer(struct Players *Player)
     }
 }
 
-void MovePlayerLeft(struct Players *Player)
-{
-    Player->state = 1;
-    Player->direction = 1;
-
-    Player->boundx -= MOVEMENT_STEP;
-
-    if(Player->boundx < 0)
-        Player->boundx = 0;
-}
-
-void MovePlayerRight(struct Players *Player)
-{
-    Player->state = 1;
-    Player->direction = 0;
-
-    Player->boundx += MOVEMENT_STEP;
-
-    if(Player->boundx > (DISPLAY_WIDTH - Player->width))
-        Player->boundx = (DISPLAY_WIDTH - Player->width);
-}
-
 void playerJump(struct Players *Player)
 {
     Player->jump = !detectColisionDown_Matriz(Player, &Map);
@@ -719,26 +693,19 @@ void updateMapPosition(struct Players *Player, struct Maps *curMap)
 
 void InitEnemy(struct Enemies *Enemy, ALLEGRO_BITMAP *enemyImage)
 {
-    int i;
-
-    for (i = 0; i<Map.numEnemies; i++)
-    {
-        StartEnemy(Enemy);
-        UpdateEnemy(Enemy);
-    }
+    StartEnemy(Enemy);
+    UpdateEnemy(Enemy);
 }
 
 void animateEnemy(struct Enemies *Enemy, ALLEGRO_BITMAP *enemyImage)
 {
-    int i;
-
-    for (i = 0; i<Map.numEnemies; i++)
+    if(++Enemy->idle.frameCount >= Enemy->idle.frameDelay)
     {
-        StartEnemy(Enemy);
-        UpdateEnemy(Enemy);
+        if(++Enemy->idle.curFrame >= Enemy->idle.maxFrame)
+            Enemy->idle.curFrame = 1;
+        Enemy->idle.frameCount = 0;
     }
 }
-
 
 void DrawEnemy(struct Enemies *Enemy)
 {
@@ -747,26 +714,12 @@ void DrawEnemy(struct Enemies *Enemy)
 
 void StartEnemy(struct Enemies *Enemy)
 {
-    Enemy->Running.maxFrame = 2;
-	Enemy->Running.curFrame = 0;
-	Enemy->Running.frameCount = 0;
-	Enemy->Running.frameDelay = 6;
-	Enemy->Running.frameWidth = 105;
-	Enemy->Running.frameHeight = 85;
-
     Enemy->idle.maxFrame = 2;
 	Enemy->idle.curFrame = 0;
 	Enemy->idle.frameCount = 0;
 	Enemy->idle.frameDelay = 6;
 	Enemy->idle.frameWidth = 105;
 	Enemy->idle.frameHeight = 85;
-
-    Enemy->Exploding.maxFrame = 2;
-	Enemy->Exploding.curFrame = 0;
-	Enemy->Exploding.frameCount = 0;
-	Enemy->Exploding.frameDelay = 6;
-	Enemy->Exploding.frameWidth = 105;
-	Enemy->Exploding.frameHeight = 85;
 }
 
 void UpdateEnemy(struct Enemies *Enemy)
@@ -856,12 +809,6 @@ void InitMap(struct Maps *curMap, struct Players *Player, struct Enemies *Enemy)
     }
 
 }
-
-void ChangeState(int *state, int newState)
-{
-
-}
-
 
 int mainMenu(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *Background)
 {
@@ -1273,6 +1220,7 @@ int game(struct Players *Player, struct Maps *curMap, struct Enemies *Enemy, ALL
     {
         updatePlayer(Player);
         animatePlayer(Player);
+        animateEnemy(Enemy);
 
         DrawBackground(Background, curMap);
 
