@@ -25,7 +25,7 @@
 // Definição dos valores para o compilador
 //--------------------------------------------------
 // Definições da tela
-#define FULLSCREEN      1
+#define FULLSCREEN      0
 #define DISPLAY_WIDTH   1600
 #define DISPLAY_HEIGHT  900
 #define BACKGROUND_SOURCE_WIDTH 1000
@@ -100,6 +100,8 @@ bool warning = false;
 int warningTime = 0;
 char warningText[30] = "";
 
+int enemy_threshold = 300;
+
 //--------------------------------------------------
 // Definição das funções utilizadas
 //--------------------------------------------------
@@ -119,10 +121,10 @@ void UpdateBullet(Bullet bullet[], int size);
 void CollideBullet(Bullet bullet[], int bSize, Comet comets[], int cSize, SpaceShip &ship, Explosion explosions[], int eSize);
 */
 
-void InitEnemy(struct Enemies *Enemy, ALLEGRO_BITMAP *enemyImage);
-void DrawEnemy(struct Enemies *Enemy);
+void InitEnemy(struct Enemies *Enemy, struct Players *Player, struct Maps *curMap);
+void DrawEnemy(struct Enemies *Enemy, struct Maps *curMap);
 void StartEnemy(struct Enemies *Enemy);
-void UpdateEnemy(struct Enemies *Enemy);
+void UpdateEnemy(struct Enemies *Enemy, struct Players *Player, struct Maps *curMap);
 void CollideEnemy(struct Enemies *Enemy, struct Players *Player, struct Explosions Explosion[], int eSize);
 
 void InitExplosions(struct Explosions Explosion, int size, ALLEGRO_BITMAP *image);
@@ -161,6 +163,8 @@ int detectColisionDown_Matriz(struct Players *Player, struct Maps *curMap);
 
 float CheckDistance(int x1, int y1, int x2, int y2);
 
+void updateMapPosition(struct Players *Player, struct Maps *curMap, struct Enemies *Enemy);
+
 int main()
 {
     //Primitive variable
@@ -172,7 +176,6 @@ int main()
     ALLEGRO_FONT *arial_18 = NULL;
     ALLEGRO_FONT *bankGothic_50 = NULL;
 
-    ALLEGRO_BITMAP *enemyImage;
     //ALLEGRO_BITMAP *expImage;
 
     ALLEGRO_BITMAP *frameMenu = NULL;
@@ -247,7 +250,7 @@ int main()
     Player.idle.Image = al_load_bitmap("Bitmaps/minerIdle.png");
     Player.dying.Image = al_load_bitmap("Bitmaps/minerDying.png");
 
-    enemyImage = al_load_bitmap("Bitmaps/MineTurtle.png");
+    Enemy.idle.Image = al_load_bitmap("Bitmaps/MineTurtle.png");
 
     blocos = al_load_bitmap("Bitmaps/Blocos.png");
     Player.blockCracking.Image = al_load_bitmap("Bitmaps/BlockCracks.png");
@@ -320,8 +323,9 @@ int main()
             {
                 InitPlayer(&Player, &Map);
                 InitMap(&Map, &Player, &Enemy);
+                InitEnemy(&Enemy, &Player, &Map);
             }
-            gameState = game(&Player, &Map, &Enemy, background, blocos, enemyImage, arial_18, bankGothic_50);
+            gameState = game(&Player, &Map, &Enemy, background, blocos, Enemy.idle.Image, arial_18, bankGothic_50);
             if((gameState != 3)&&(gameState != 4))
                 Player.initialized = false;
         }
@@ -375,7 +379,7 @@ int main()
     al_destroy_bitmap(Player.mining.Image);
     al_destroy_bitmap(Player.idle.Image);
     al_destroy_bitmap(Player.dying.Image);
-    al_destroy_bitmap(enemyImage);
+    al_destroy_bitmap(Enemy.idle.Image);
     al_destroy_bitmap(blocos);
     al_destroy_bitmap(pickaxeCursor);
     al_destroy_bitmap(idleCursor);
@@ -664,51 +668,72 @@ void updatePlayer(struct Players *Player)
     Player->y = Player->boundy - 76;
 }
 
-void updateMapPosition(struct Players *Player, struct Maps *curMap)
+void updateMapPosition(struct Players *Player, struct Maps *curMap, struct Enemies *Enemy)
 {
+    int i;
     if((curMap->x <= 0) && (Player->boundx <= ((DISPLAY_WIDTH/2) - (Player->width/2))))
     {
         curMap->x += ((DISPLAY_WIDTH/2) - (Player->width/2)) - Player->boundx;
+        for(i=0; i<curMap->numEnemies; i++)
+            Enemy->x[i] += ((DISPLAY_WIDTH/2) - (Player->width/2)) - Player->boundx;
         Player->boundx = ((DISPLAY_WIDTH/2) - (Player->width/2));
     }
 
     if((curMap->y <= 0) && (Player->boundy <= ((DISPLAY_HEIGHT/2) - (Player->height/2))))
     {
         curMap->y += ((DISPLAY_HEIGHT/2) - (Player->height/2)) - Player->boundy;
+        for(i=0; i<curMap->numEnemies; i++)
+            Enemy->y[i] += ((DISPLAY_HEIGHT/2) - (Player->height/2)) - Player->boundy;
         Player->boundy = ((DISPLAY_HEIGHT/2) - (Player->height/2));
     }
 
     if(((curMap->x + (curMap->numColunas * curMap->blockWidth)) > DISPLAY_WIDTH) && (Player->boundx >= ((DISPLAY_WIDTH/2) - (Player->width/2))))
     {
         curMap->x += ((DISPLAY_WIDTH/2) - (Player->width/2)) - Player->boundx;
+        for(i=0; i<curMap->numEnemies; i++)
+            Enemy->x[i] += ((DISPLAY_WIDTH/2) - (Player->width/2)) - Player->boundx;
         Player->boundx = ((DISPLAY_WIDTH/2) - (Player->width/2));
     }
 
     if(((curMap->y + (curMap->numLinhas * curMap->blockHeight)) > DISPLAY_HEIGHT) && (Player->boundy >= ((DISPLAY_HEIGHT/2) - (Player->height/2))))
     {
         curMap->y += ((DISPLAY_HEIGHT/2) - (Player->height/2)) - Player->boundy;
+        for(i=0; i<curMap->numEnemies; i++)
+            Enemy->y[i] += ((DISPLAY_HEIGHT/2) - (Player->height/2)) - Player->boundy;
         Player->boundy = ((DISPLAY_HEIGHT/2) - (Player->height/2));
     }
 }
 
-void InitEnemy(struct Enemies *Enemy, ALLEGRO_BITMAP *enemyImage)
+void InitEnemy(struct Enemies *Enemy, struct Players *Player, struct Maps *curMap)
 {
     StartEnemy(Enemy);
-    UpdateEnemy(Enemy);
+    DrawEnemy(Enemy, curMap);
 }
 
-void animateEnemy(struct Enemies *Enemy, ALLEGRO_BITMAP *enemyImage)
+void animateEnemy(struct Enemies *Enemy)
 {
     if(++Enemy->idle.frameCount >= Enemy->idle.frameDelay)
     {
         if(++Enemy->idle.curFrame >= Enemy->idle.maxFrame)
-            Enemy->idle.curFrame = 1;
+            Enemy->idle.curFrame = 0;
         Enemy->idle.frameCount = 0;
     }
 }
 
-void DrawEnemy(struct Enemies *Enemy)
+void DrawEnemy(struct Enemies *Enemy, struct Maps *curMap)
 {
+    int i;
+    for(i = 0; i<curMap->numEnemies; i++)
+    {
+            if(Enemy->direction[i] == 0)
+        {
+            al_draw_scaled_bitmap(Enemy->idle.Image, Enemy->idle.curFrame * Enemy->idle.frameWidth, 0, Enemy->idle.frameWidth, Enemy->idle.frameHeight, Enemy->x[i], Enemy->y[i], 50, 50,0);
+        }
+        else if(Enemy->direction[i] == 1)
+        {
+            al_draw_scaled_bitmap(Enemy->idle.Image, Enemy->idle.curFrame * Enemy->idle.frameWidth, 0, Enemy->idle.frameWidth, Enemy->idle.frameHeight, Enemy->x[i], Enemy->y[i], 50, 50, ALLEGRO_FLIP_HORIZONTAL);
+        }
+    }
 
 }
 
@@ -717,13 +742,56 @@ void StartEnemy(struct Enemies *Enemy)
     Enemy->idle.maxFrame = 2;
 	Enemy->idle.curFrame = 0;
 	Enemy->idle.frameCount = 0;
-	Enemy->idle.frameDelay = 6;
+	Enemy->idle.frameDelay = 15;
 	Enemy->idle.frameWidth = 105;
 	Enemy->idle.frameHeight = 85;
 }
 
-void UpdateEnemy(struct Enemies *Enemy)
+void UpdateEnemy(struct Enemies *Enemy, struct Players *Player, struct Maps *curMap)
 {
+    int i;
+    for(i = 0; i<curMap->numEnemies; i++)
+    {
+        if(Enemy->state[i] == 0)
+			{
+				if(enemy_threshold > CheckDistance(Player->x, Player->y, Enemy->x[i], Enemy->y[i]))
+				{
+					Enemy->state[i] = 1;
+				}
+
+			}
+			else if(Enemy->state[i] == 1)
+			{
+				if(enemy_threshold < CheckDistance(Enemy->x[i], Enemy->y[i], Enemy->centerx[i], Enemy->centery[i]))
+				{
+					Enemy->state[i] = 2;
+				}
+				else
+				{
+					//Enemy->x[i] += 10;
+
+					if(enemy_threshold < CheckDistance(Enemy->x[i], Enemy->y[i], Player->x, Player->y))
+					{
+						Enemy->state[i] = 2;
+					}
+				}
+			}
+			else if(Enemy->state[i] == 2)
+			{
+				if(5 >= CheckDistance(Enemy->x[i], Enemy->y[i], Enemy->centerx[i], Enemy->centery[i]))
+				{
+					//Enemy->x[i] = Enemy->centerx[i];
+					Enemy->state[i] = 0;
+				}
+				else
+				{
+					//Enemy->x[i] += 10;
+
+					if(enemy_threshold > CheckDistance(Enemy->x[i], Enemy->y[i], Player->x, Player->y))
+						Enemy->state[i] = 1;
+				}
+			}
+    }
 
 }
 
@@ -791,21 +859,22 @@ void InitMap(struct Maps *curMap, struct Players *Player, struct Enemies *Enemy)
                     curMap->Blocos[i][j] = 0;
                     Player->boundx = curMap->x + (j * curMap->blockWidth);
                     Player->boundy = curMap->y + ((i-1) * curMap->blockHeight);
-                    updateMapPosition(Player, curMap);
+
                 }
                 if(curMap->Blocos[i][j] == 6)
                 {
                     if(curEnemy < curMap->numEnemies)
                     {
                         curMap->Blocos[i][j] = 0;
-                        Enemy->boundx[i] = curMap->x + (j * curMap->blockWidth);
-                        Enemy->boundy[i] = curMap->y + (i * curMap->blockHeight);
-                        Enemy->active[i] = true;
+                        Enemy->x[curEnemy] = curMap->x + (j * curMap->blockWidth);
+                        Enemy->y[curEnemy] = curMap->y + (i * curMap->blockHeight);
+                        Enemy->active[curEnemy] = true;
                         curEnemy++;
                     }
                 }
             }
         }
+        updateMapPosition(Player, curMap, Enemy);
     }
 
 }
@@ -1186,29 +1255,7 @@ int game(struct Players *Player, struct Maps *curMap, struct Enemies *Enemy, ALL
     }
     */
 
-    if((curMap->x <= 0) && (Player->boundx <= ((DISPLAY_WIDTH/2) - (Player->width/2))))
-    {
-        curMap->x += ((DISPLAY_WIDTH/2) - (Player->width/2)) - Player->boundx;
-        Player->boundx = ((DISPLAY_WIDTH/2) - (Player->width/2));
-    }
-
-    if((curMap->y <= 0) && (Player->boundy <= ((DISPLAY_HEIGHT/2) - (Player->height/2))))
-    {
-        curMap->y += ((DISPLAY_HEIGHT/2) - (Player->height/2)) - Player->boundy;
-        Player->boundy = ((DISPLAY_HEIGHT/2) - (Player->height/2));
-    }
-
-    if(((curMap->x + (curMap->numColunas * curMap->blockWidth)) > DISPLAY_WIDTH) && (Player->boundx >= ((DISPLAY_WIDTH/2) - (Player->width/2))))
-    {
-        curMap->x += ((DISPLAY_WIDTH/2) - (Player->width/2)) - Player->boundx;
-        Player->boundx = ((DISPLAY_WIDTH/2) - (Player->width/2));
-    }
-
-    if(((curMap->y + (curMap->numLinhas * curMap->blockHeight)) > DISPLAY_HEIGHT) && (Player->boundy >= ((DISPLAY_HEIGHT/2) - (Player->height/2))))
-    {
-        curMap->y += ((DISPLAY_HEIGHT/2) - (Player->height/2)) - Player->boundy;
-        Player->boundy = ((DISPLAY_HEIGHT/2) - (Player->height/2));
-    }
+    updateMapPosition(Player, curMap, Enemy);
 
     movement = false;
     movementBoost = false;
@@ -1218,7 +1265,9 @@ int game(struct Players *Player, struct Maps *curMap, struct Enemies *Enemy, ALL
 
     if(draw)
     {
+        printf("enemy:%d %d Player:%d %d \n",Enemy->x[0], Enemy->y[0], Player->x, Player->y);
         updatePlayer(Player);
+        UpdateEnemy(Enemy, Player, curMap);
         animatePlayer(Player);
         animateEnemy(Enemy);
 
@@ -1302,6 +1351,7 @@ int game(struct Players *Player, struct Maps *curMap, struct Enemies *Enemy, ALL
         */
 
         DrawPlayer(Player);
+        DrawEnemy(Enemy, curMap);
 
         al_draw_scaled_bitmap(silicon, 0, 0, 328, 207, 10, 10, 60, 60, 0);
         al_draw_textf(font2, al_map_rgb(255, 255, 255), 80, 15, 0, "%d/%d", Player->silicio, curMap->numSilicio);
