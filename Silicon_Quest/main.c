@@ -435,7 +435,7 @@ void InitPlayer(struct Players *Player, struct Maps *curMap)
 
     Player->force = 0;
 
-    Player->tresHold = 160;
+    Player->tresHold = 130;
 
     Player->initialized = true;
 
