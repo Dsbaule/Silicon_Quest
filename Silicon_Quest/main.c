@@ -32,8 +32,8 @@
 #define BACKGROUND_SOURCE_HEIGHT 500
 #define BACKGROUND_WIDTH   2000
 #define BACKGROUND_HEIGHT  1000
-#define MAX_COLUNAS     2500
-#define MAX_LINHAS      2500
+#define MAX_COLUNAS     100
+#define MAX_LINHAS      100
 // Definições dos Timers
 #define FPS             60
 #define MOVEMENT_SPEED  500
@@ -124,7 +124,7 @@ void CollideBullet(Bullet bullet[], int bSize, Comet comets[], int cSize, SpaceS
 void InitEnemy(struct Enemies *Enemy, struct Players *Player, struct Maps *curMap);
 void DrawEnemy(struct Enemies *Enemy, struct Maps *curMap);
 void StartEnemy(struct Enemies *Enemy);
-void UpdateEnemy(struct Enemies *Enemy, struct Players *Player, struct Maps *curMap);
+void UpdateEnemy(struct Enemies *Enemy, struct Maps *curMap);
 void CollideEnemy(struct Enemies *Enemy, struct Players *Player, struct Explosions Explosion[], int eSize);
 
 void InitExplosions(struct Explosions Explosion, int size, ALLEGRO_BITMAP *image);
@@ -675,7 +675,10 @@ void updateMapPosition(struct Players *Player, struct Maps *curMap, struct Enemi
     {
         curMap->x += ((DISPLAY_WIDTH/2) - (Player->width/2)) - Player->boundx;
         for(i=0; i<curMap->numEnemies; i++)
+        {
             Enemy->x[i] += ((DISPLAY_WIDTH/2) - (Player->width/2)) - Player->boundx;
+
+        }
         Player->boundx = ((DISPLAY_WIDTH/2) - (Player->width/2));
     }
 
@@ -683,7 +686,10 @@ void updateMapPosition(struct Players *Player, struct Maps *curMap, struct Enemi
     {
         curMap->y += ((DISPLAY_HEIGHT/2) - (Player->height/2)) - Player->boundy;
         for(i=0; i<curMap->numEnemies; i++)
+        {
             Enemy->y[i] += ((DISPLAY_HEIGHT/2) - (Player->height/2)) - Player->boundy;
+
+        }
         Player->boundy = ((DISPLAY_HEIGHT/2) - (Player->height/2));
     }
 
@@ -691,7 +697,11 @@ void updateMapPosition(struct Players *Player, struct Maps *curMap, struct Enemi
     {
         curMap->x += ((DISPLAY_WIDTH/2) - (Player->width/2)) - Player->boundx;
         for(i=0; i<curMap->numEnemies; i++)
+        {
             Enemy->x[i] += ((DISPLAY_WIDTH/2) - (Player->width/2)) - Player->boundx;
+
+        }
+
         Player->boundx = ((DISPLAY_WIDTH/2) - (Player->width/2));
     }
 
@@ -699,7 +709,11 @@ void updateMapPosition(struct Players *Player, struct Maps *curMap, struct Enemi
     {
         curMap->y += ((DISPLAY_HEIGHT/2) - (Player->height/2)) - Player->boundy;
         for(i=0; i<curMap->numEnemies; i++)
+        {
             Enemy->y[i] += ((DISPLAY_HEIGHT/2) - (Player->height/2)) - Player->boundy;
+
+        }
+
         Player->boundy = ((DISPLAY_HEIGHT/2) - (Player->height/2));
     }
 }
@@ -707,6 +721,7 @@ void updateMapPosition(struct Players *Player, struct Maps *curMap, struct Enemi
 void InitEnemy(struct Enemies *Enemy, struct Players *Player, struct Maps *curMap)
 {
     StartEnemy(Enemy);
+    UpdateEnemy(Enemy, curMap);
     DrawEnemy(Enemy, curMap);
 }
 
@@ -725,7 +740,7 @@ void DrawEnemy(struct Enemies *Enemy, struct Maps *curMap)
     int i;
     for(i = 0; i<curMap->numEnemies; i++)
     {
-            if(Enemy->direction[i] == 0)
+        if(Enemy->direction[i] == 0)
         {
             al_draw_scaled_bitmap(Enemy->idle.Image, Enemy->idle.curFrame * Enemy->idle.frameWidth, 0, Enemy->idle.frameWidth, Enemy->idle.frameHeight, Enemy->x[i], Enemy->y[i], 50, 50,0);
         }
@@ -740,64 +755,54 @@ void DrawEnemy(struct Enemies *Enemy, struct Maps *curMap)
 void StartEnemy(struct Enemies *Enemy)
 {
     Enemy->idle.maxFrame = 2;
-	Enemy->idle.curFrame = 0;
-	Enemy->idle.frameCount = 0;
-	Enemy->idle.frameDelay = 15;
-	Enemy->idle.frameWidth = 105;
-	Enemy->idle.frameHeight = 85;
+    Enemy->idle.curFrame = 0;
+    Enemy->idle.frameCount = 0;
+    Enemy->idle.frameDelay = 15;
+    Enemy->idle.frameWidth = 105;
+    Enemy->idle.frameHeight = 85;
 }
 
-void UpdateEnemy(struct Enemies *Enemy, struct Players *Player, struct Maps *curMap)
+void UpdateEnemy(struct Enemies *Enemy, struct Maps *curMap)
 {
-    int i;
-    for(i = 0; i<curMap->numEnemies; i++)
+    int i, curLinha, curColuna;
+    for(i=0; i<curMap->numEnemies; i++)
     {
-        if(Enemy->state[i] == 0)
-			{
-				if(enemy_threshold > CheckDistance(Player->x, Player->y, Enemy->x[i], Enemy->y[i]))
-				{
-					Enemy->state[i] = 1;
-				}
 
-			}
-			else if(Enemy->state[i] == 1)
-			{
-				if(enemy_threshold < CheckDistance(Enemy->x[i], Enemy->y[i], Enemy->centerx[i], Enemy->centery[i]))
-				{
-					Enemy->state[i] = 2;
-				}
-				else
-				{
-					//Enemy->x[i] += 10;
+        if(Enemy->direction[i] == 0)
+        {
+            curColuna = ((Enemy->x[i] - 1 - curMap->x) / curMap->blockWidth);
+            curLinha = ((Enemy->y[i] - curMap->y) / curMap->blockHeight);
+            if((curMap->Blocos[curLinha][curColuna] == 0) && (curMap->Blocos[curLinha + 1][curColuna] != 0))
+                Enemy->x[i] -= 1;
+            else
+                Enemy->direction[i] = 1;
+        }
+        else if(Enemy->direction[i] == 1)
+        {
+            curColuna = ((Enemy->x[i] + 50 - curMap->x) / curMap->blockWidth);
+            curLinha = ((Enemy->y[i] - curMap->y) / curMap->blockHeight);
+            if((curMap->Blocos[curLinha][curColuna] == 0) && (curMap->Blocos[curLinha + 1][curColuna] != 0))
+                Enemy->x[i] += 1;
+            else
+                Enemy->direction[i] = 0;
+        }
 
-					if(enemy_threshold < CheckDistance(Enemy->x[i], Enemy->y[i], Player->x, Player->y))
-					{
-						Enemy->state[i] = 2;
-					}
-				}
-			}
-			else if(Enemy->state[i] == 2)
-			{
-				if(5 >= CheckDistance(Enemy->x[i], Enemy->y[i], Enemy->centerx[i], Enemy->centery[i]))
-				{
-					//Enemy->x[i] = Enemy->centerx[i];
-					Enemy->state[i] = 0;
-				}
-				else
-				{
-					//Enemy->x[i] += 10;
 
-					if(enemy_threshold > CheckDistance(Enemy->x[i], Enemy->y[i], Player->x, Player->y))
-						Enemy->state[i] = 1;
-				}
-			}
     }
 
+
 }
 
-void CollideEnemy(struct Enemies *Enemy, struct Players *Player, struct Explosions Explosion[], int eSize)
+int checkEnemyCollision(struct Enemies *Enemy, struct Players *Player, struct Maps *curMap)
 {
-
+    int i;
+    for(i=0; i<curMap->numEnemies; i++)
+    {
+        if(((Player->boundx >= Enemy->x[i]) && (Player->boundx <= (Enemy->x[i] + 50))) || ((Player->boundx2 >= Enemy->x[i]) && (Player->boundx2 <= (Enemy->x[i] + 50))))
+            if(((Player->boundy >= Enemy->y[i]) && (Player->boundy <= (Enemy->y[i] + 50))) || ((Player->boundy2 >= Enemy->y[i]) && (Player->boundy2 <= (Enemy->y[i] + 50))))
+                return 1;
+    }
+    return 0;
 }
 
 void InitExplosions(struct Explosions Explosion, int size, ALLEGRO_BITMAP *image)
@@ -948,7 +953,8 @@ int mainMenu(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *B
 
 int gameMenu(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *Background, struct Maps *curMap)
 {
-    if(draw){
+    if(draw)
+    {
         al_draw_scaled_bitmap(Background, 0, 0, 1000, 500, -200, -50, 1800, 950, 0);
         al_draw_scaled_bitmap(Image, 0, 0, 1600, 900, 0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT,0);
 
@@ -1026,7 +1032,8 @@ int gameTutorial(ALLEGRO_BITMAP *Tutorial1, ALLEGRO_BITMAP *Tutorial2, ALLEGRO_B
             al_draw_scaled_bitmap(Tutorial2, 0, 0, 1600, 900, 0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT,0);
     }
 
-    if(readMenu){
+    if(readMenu)
+    {
         readMenu = false;
         if(keys[ESC] || (selectedOption > 1))
         {
@@ -1052,7 +1059,11 @@ int game(struct Players *Player, struct Maps *curMap, struct Enemies *Enemy, ALL
     bool PickaxeCursor = 0;
     int i, j;
 
-    if(Player->silicio == curMap->numSilicio){
+    if(checkEnemyCollision(Enemy, Player, curMap))
+        return 10;
+
+    if(Player->silicio == curMap->numSilicio)
+    {
         Player->silicio = 0;
         return 9;
     }
@@ -1087,6 +1098,8 @@ int game(struct Players *Player, struct Maps *curMap, struct Enemies *Enemy, ALL
     mouse.linha = (mouse.y - curMap->y)/curMap->blockHeight;
 
     // READ MOUSE WHEEL MOVEMENT
+    /*   Debug Map Creator
+
     if(mouse.wheelNow > mouse.wheelBefore)
     {
         mouse.wheelBefore = mouse.wheelNow;
@@ -1101,6 +1114,11 @@ int game(struct Players *Player, struct Maps *curMap, struct Enemies *Enemy, ALL
         if(mouse.selectedBlock < 1)
             mouse.selectedBlock = NUM_BLOCOS - 1;
     }
+
+    if(keys[MOUSE_2])
+        curMap->Blocos[mouse.linha][mouse.coluna] = mouse.selectedBlock;
+
+    */
 
     if(movement && !keys[SHIFT])
     {
@@ -1190,7 +1208,8 @@ int game(struct Players *Player, struct Maps *curMap, struct Enemies *Enemy, ALL
                     if(Player->blockCracking.curFrame >= Player->blockCracking.maxFrame)
                         Player->blockCracking.curFrame = 0;
 
-                    if(Player->blockCracking.curFrame == 0){
+                    if(Player->blockCracking.curFrame == 0)
+                    {
                         if(curMap->Blocos[mouse.linha][mouse.coluna] == 4)
                             Player->silicio++;
                         curMap->Blocos[mouse.linha][mouse.coluna] = 0;
@@ -1223,8 +1242,6 @@ int game(struct Players *Player, struct Maps *curMap, struct Enemies *Enemy, ALL
         PickaxeCursor = 0;
     }
 
-    if(keys[MOUSE_2])
-        curMap->Blocos[mouse.linha][mouse.coluna] = mouse.selectedBlock;
 
     if(jumpResistance)
     {
@@ -1267,7 +1284,7 @@ int game(struct Players *Player, struct Maps *curMap, struct Enemies *Enemy, ALL
     {
         printf("enemy:%d %d Player:%d %d \n",Enemy->x[0], Enemy->y[0], Player->x, Player->y);
         updatePlayer(Player);
-        UpdateEnemy(Enemy, Player, curMap);
+        UpdateEnemy(Enemy, curMap);
         animatePlayer(Player);
         animateEnemy(Enemy);
 
@@ -1372,7 +1389,8 @@ int game(struct Players *Player, struct Maps *curMap, struct Enemies *Enemy, ALL
 
 int gamePause(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *Background, struct Players *Player, struct Maps *curMap, struct Enemies *Enemy)
 {
-    if(draw){
+    if(draw)
+    {
         al_draw_scaled_bitmap(Background, 0, 0, 1000, 500, -200, -50, 1800, 950, 0);
         al_draw_scaled_bitmap(Image, 0, 0, 1600, 900, 0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT,0);
 
@@ -1445,9 +1463,10 @@ int gamePause(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *
 int mapCreatorMenu1(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *Background, struct Maps *curMap)
 {
 
-    if(draw){
-    al_draw_scaled_bitmap(Background, 0, 0, 1000, 500, -200, -50, 1800, 950, 0);
-    al_draw_scaled_bitmap(Image, 0, 0, 1600, 900, 0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT,0);
+    if(draw)
+    {
+        al_draw_scaled_bitmap(Background, 0, 0, 1000, 500, -200, -50, 1800, 950, 0);
+        al_draw_scaled_bitmap(Image, 0, 0, 1600, 900, 0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT,0);
 
         if(selectedOption == 0)
         {
@@ -1515,7 +1534,8 @@ int mapCreatorMenu1(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BI
 
 int mapCreatorMenu2(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *Background, struct Maps *curMap, ALLEGRO_FONT *font)
 {
-    if(draw){
+    if(draw)
+    {
         al_draw_scaled_bitmap(Background, 0, 0, 1000, 500, -200, -50, 1800, 950, 0);
         al_draw_scaled_bitmap(Image, 0, 0, 1600, 900, 0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT,0);
 
@@ -1860,7 +1880,8 @@ int mapCreator(struct Maps *curMap, ALLEGRO_BITMAP *background, ALLEGRO_BITMAP *
 
 int mapCreatorPause(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *Background, struct Maps *curMap)
 {
-    if(draw){
+    if(draw)
+    {
         al_draw_scaled_bitmap(Background, 0, 0, 1000, 500, -200, -50, 1800, 950, 0);
         al_draw_scaled_bitmap(Image, 0, 0, 1600, 900, 0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT,0);
 
@@ -1931,7 +1952,8 @@ int mapCreatorPause(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BI
 
 int gameWon(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *Background, struct Maps *curMap)
 {
-    if(draw){
+    if(draw)
+    {
         al_draw_scaled_bitmap(Background, 0, 0, 1000, 500, -200, -50, 1800, 950, 0);
         al_draw_scaled_bitmap(Image, 0, 0, 1600, 900, 0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT,0);
 
@@ -1998,7 +2020,8 @@ int gameWon(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *Ba
 
 int gameOver(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *Background, struct Maps *curMap)
 {
-    if(draw){
+    if(draw)
+    {
         al_draw_scaled_bitmap(Background, 0, 0, 1000, 500, -200, -50, 1800, 950, 0);
         al_draw_scaled_bitmap(Image, 0, 0, 1600, 900, 0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT,0);
 
