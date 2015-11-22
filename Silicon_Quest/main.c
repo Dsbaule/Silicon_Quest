@@ -2145,6 +2145,8 @@ int gameOver(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *B
                 return 3;
                 break;
             case 2:
+                al_stop_samples();
+                al_play_sample(music, 0.5, 0.0,1.0,ALLEGRO_PLAYMODE_LOOP,NULL);
                 selectedOption = 0;
                 return 0;
                 break;
