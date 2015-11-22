@@ -773,7 +773,7 @@ void UpdateEnemy(struct Enemies *Enemy, struct Maps *curMap)
             curColuna = ((Enemy->x[i] - 1 - curMap->x) / curMap->blockWidth);
             curLinha = ((Enemy->y[i] - curMap->y) / curMap->blockHeight);
             if((curMap->Blocos[curLinha][curColuna] == 0) && (curMap->Blocos[curLinha + 1][curColuna] != 0))
-                Enemy->x[i] -= 1;
+                Enemy->x[i] -= 2;
             else
                 Enemy->direction[i] = 1;
         }
@@ -782,7 +782,7 @@ void UpdateEnemy(struct Enemies *Enemy, struct Maps *curMap)
             curColuna = ((Enemy->x[i] + 50 - curMap->x) / curMap->blockWidth);
             curLinha = ((Enemy->y[i] - curMap->y) / curMap->blockHeight);
             if((curMap->Blocos[curLinha][curColuna] == 0) && (curMap->Blocos[curLinha + 1][curColuna] != 0))
-                Enemy->x[i] += 1;
+                Enemy->x[i] += 2;
             else
                 Enemy->direction[i] = 0;
         }
@@ -1282,7 +1282,7 @@ int game(struct Players *Player, struct Maps *curMap, struct Enemies *Enemy, ALL
 
     if(draw)
     {
-        printf("enemy:%d %d Player:%d %d \n",Enemy->x[0], Enemy->y[0], Player->x, Player->y);
+        //printf("enemy:%d %d Player:%d %d \n",Enemy->x[0], Enemy->y[0], Player->x, Player->y);
         updatePlayer(Player);
         UpdateEnemy(Enemy, curMap);
         animatePlayer(Player);
@@ -1744,8 +1744,18 @@ int mapCreator(struct Maps *curMap, ALLEGRO_BITMAP *background, ALLEGRO_BITMAP *
         }
         else if((mouse.selectedBlock == 6)&&(curMap->numEnemies < MAX_ENEMIES)&&(curMap->Blocos[mouse.linha][mouse.coluna] != 6))
         {
-            curMap->numEnemies++;
-            curMap->Blocos[mouse.linha][mouse.coluna] = mouse.selectedBlock;
+            if(curMap->Blocos[mouse.linha + 1][mouse.coluna] == 0)
+            {
+                warning = true;
+                warningTime = 0;
+                strcpy (warningText, "Os inimigos nao voam, coloque o spawner no chao!");
+            }
+            else
+            {
+                curMap->numEnemies++;
+                curMap->Blocos[mouse.linha][mouse.coluna] = mouse.selectedBlock;
+            }
+
         }
         else if((mouse.selectedBlock == 6)&&(curMap->numEnemies >= MAX_ENEMIES))
         {
