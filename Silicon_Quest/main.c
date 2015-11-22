@@ -32,8 +32,6 @@
 #define BACKGROUND_SOURCE_HEIGHT 500
 #define BACKGROUND_WIDTH   2000
 #define BACKGROUND_HEIGHT  1000
-#define MAX_COLUNAS     100
-#define MAX_LINHAS      100
 // Definições dos Timers
 #define FPS             60
 #define MOVEMENT_SPEED  500
@@ -68,6 +66,12 @@ ALLEGRO_DISPLAY *display = NULL;
 ALLEGRO_BITMAP *pickaxeCursor = NULL;
 ALLEGRO_BITMAP *idleCursor = NULL;
 ALLEGRO_BITMAP *silicon = NULL;
+
+ALLEGRO_SAMPLE *music = NULL;
+ALLEGRO_SAMPLE *jumpSound = NULL;
+ALLEGRO_SAMPLE *mineTurtle = NULL;
+ALLEGRO_SAMPLE *victorySong = NULL;
+
 
 //--------------------------------------------------
 // Definição das variaveis para INPUT
@@ -134,7 +138,7 @@ void UpdateExplosions(struct Explosions Explosion, int size);
 
 void DrawBackground(ALLEGRO_BITMAP *back, struct Maps *curMap);
 
-void InitMap(struct Maps *curMap, struct Players *Player, struct Enemies *Enemy);
+void InitMap(struct Maps *curMap, struct Players *Player, struct Enemies *Enemy, bool initEntities);
 
 int mainMenu(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *Background);
 int gameMenu(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *Background, struct Maps *curMap);
@@ -207,6 +211,20 @@ int main()
         al_show_native_message_box(NULL, "ERRO", "Incapaz de inicializar o Allegro", NULL, NULL, ALLEGRO_MESSAGEBOX_ERROR);
         return -1;
     }
+    if(!al_install_audio()){
+      fprintf(stderr, "failed to initialize audio!\n");
+      return -1;
+   }
+
+   if(!al_init_acodec_addon()){
+      fprintf(stderr, "failed to initialize audio codecs!\n");
+      return -1;
+   }
+
+   if (!al_reserve_samples(4)){
+      fprintf(stderr, "failed to reserve samples!\n");
+      return -1;
+   }
 
     // Inicialização dos módulos adicionados
     al_init_font_addon();
@@ -283,6 +301,28 @@ int main()
     arial_18 = al_load_font("arial.ttf", 18, 0);
     bankGothic_50 = al_load_font("bgothl.ttf", 50, 0);
 
+    //Setup da musica
+    music = al_load_sample("FeelGoodInc.wav");
+    if (!music){
+      printf( "Music clip sample not loaded!\n" );
+      return -1;
+    }
+    jumpSound = al_load_sample("Jump.wav");
+    if (!jumpSound){
+      printf( "Jump clip sample not loaded!\n" );
+      return -1;
+    }
+    mineTurtle = al_load_sample("MineTurtle.wav");
+    if (!mineTurtle){
+      printf( "MineTurtle clip sample not loaded!\n" );
+      return -1;
+    }
+    victorySong = al_load_sample("YoureTheBest.wav");
+    if (!music){
+      printf( "victorySong clip sample not loaded!\n" );
+      return -1;
+    }
+
     //Setup dos Eventos
     event_queue = al_create_event_queue();
 
@@ -306,6 +346,9 @@ int main()
 
     Player.initialized = false;
 
+    /* Loop the sample until the display closes. */
+    al_play_sample(music, 0.5, 0.0,1.0,ALLEGRO_PLAYMODE_LOOP,NULL);
+
     while(!done)
     {
         al_wait_for_event(event_queue, &ev);
@@ -321,7 +364,7 @@ int main()
         {
             if(!Player.initialized)
             {
-                InitMap(&Map, &Player, &Enemy);
+                InitMap(&Map, &Player, &Enemy, 1);
                 InitPlayer(&Player, &Map);
                 InitEnemy(&Enemy, &Player, &Map);
             }
@@ -341,14 +384,14 @@ int main()
         {
             gameState = mapCreatorMenu2(mapCreatorMenu2Image, frameMenu, background, &Map, bankGothic_50);
             if(gameState == 7)
-                InitMap(&Map, &Player, &Enemy);
+                InitMap(&Map, &Player, &Enemy, 1);
         }
         else if(gameState == 7)
         {
             if(!Player.initialized)
             {
                 InitPlayer(&Player, &Map);
-                InitMap(&Map, &Player, &Enemy);
+                InitMap(&Map, &Player, &Enemy, 0);
             }
             gameState = mapCreator(&Map, background, blocos, frame, bankGothic_50);
             if(gameState != 7)
@@ -416,6 +459,10 @@ int main()
     al_destroy_font(bankGothic_50);
 
     al_destroy_display(display);
+
+    al_destroy_sample(music);
+    al_destroy_sample(jumpSound);
+    al_destroy_sample(mineTurtle);
 
     return 0;
 }
@@ -840,7 +887,7 @@ void DrawBackground(ALLEGRO_BITMAP *back, struct Maps *curMap)
 
 }
 
-void InitMap(struct Maps *curMap, struct Players *Player, struct Enemies *Enemy)
+void InitMap(struct Maps *curMap, struct Players *Player, struct Enemies *Enemy, bool initEntities)
 {
     int i, j;
     int curEnemy = 0;
@@ -857,7 +904,7 @@ void InitMap(struct Maps *curMap, struct Players *Player, struct Enemies *Enemy)
         curMap->numEnemies = 0;
     }
 
-    else
+    else if(initEntities)
     {
         for(i = 0; i < curMap->numLinhas; i++)
         {
@@ -1063,12 +1110,17 @@ int game(struct Players *Player, struct Maps *curMap, struct Enemies *Enemy, ALL
     bool PickaxeCursor = 0;
     int i, j;
 
-    if(checkEnemyCollision(Enemy, Player, curMap))
+    if(checkEnemyCollision(Enemy, Player, curMap)){
+        al_stop_samples();
+        al_play_sample(mineTurtle, 1.0, 0.0,1.0,ALLEGRO_PLAYMODE_ONCE,NULL);
         return 10;
+    }
 
     if(Player->silicio == curMap->numSilicio)
     {
         Player->silicio = 0;
+        al_stop_samples();
+        al_play_sample(victorySong, 1, 0.0,1.0,ALLEGRO_PLAYMODE_LOOP,NULL);
         return 9;
     }
 
@@ -1124,7 +1176,7 @@ int game(struct Players *Player, struct Maps *curMap, struct Enemies *Enemy, ALL
 
     */
 
-    if(movement && !keys[SHIFT])
+    if(movement)
     {
         if(!(keys[LEFT] || keys[A]) && !(keys[RIGHT] || keys[D]) && !(keys[UP] || keys[W]) && !(keys[DOWN] || keys[S]))
         {
@@ -1432,7 +1484,7 @@ int gamePause(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *
                 selectedOption = 0;
                 loadMap(curMap);
                 InitPlayer(Player, curMap);
-                InitMap(curMap, Player, Enemy);
+                InitMap(curMap, Player, Enemy, 1);
                 return 3;
                 break;
             case 2:
@@ -2008,11 +2060,15 @@ int gameWon(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *Ba
             {
             case 0:
                 selectedOption = 0;
+                al_stop_samples();
+                al_play_sample(music, 0.5, 0.0,1.0,ALLEGRO_PLAYMODE_LOOP,NULL);
                 loadMap(curMap);
                 return 3;
                 break;
             case 1:
                 selectedOption = 0;
+                al_stop_samples();
+                al_play_sample(music, 0.5, 0.0,1.0,ALLEGRO_PLAYMODE_LOOP,NULL);
                 return 0;
                 break;
             case 2:
@@ -2075,11 +2131,15 @@ int gameOver(ALLEGRO_BITMAP *Image, ALLEGRO_BITMAP *frameMenu, ALLEGRO_BITMAP *B
             switch (selectedOption)
             {
             case 0:
+                al_stop_samples();
+                al_play_sample(music, 0.5, 0.0,1.0,ALLEGRO_PLAYMODE_LOOP,NULL);
                 selectedOption = 0;
                 loadMap(curMap);
                 return 3;
                 break;
             case 1:
+                al_stop_samples();
+                al_play_sample(music, 0.5, 0.0,1.0,ALLEGRO_PLAYMODE_LOOP,NULL);
                 selectedOption = 0;
                 loadMap(curMap);
                 return 3;
