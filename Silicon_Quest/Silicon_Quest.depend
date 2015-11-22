@@ -1,5 +1,5 @@
 # depslib dependency file v1.0
-1435930527 source:c:\users\dsbau_000\skydrive\documents\programação\github\silicon_quest\silicon_quest\main.c
+1448218382 source:c:\users\dsbau_000\skydrive\documents\programação\github\silicon_quest\silicon_quest\main.c
 	<allegro5/allegro.h>
 	<allegro5/allegro_font.h>
 	<allegro5/allegro_ttf.h>
@@ -253,7 +253,7 @@
 1433128583 c:\codeblocks\mingw\allegro5\include\allegro5\allegro_native_dialog.h
 	"allegro5/allegro.h"
 
-1435930418 c:\users\dsbau_000\skydrive\documents\programação\github\silicon_quest\silicon_quest\structs.h
+1447621213 c:\users\dsbau_000\skydrive\documents\programação\github\silicon_quest\silicon_quest\structs.h
 
 1433128583 c:\codeblocks\mingw\allegro5\include\allegro5\allegro_audio.h
 	"allegro5/allegro.h"

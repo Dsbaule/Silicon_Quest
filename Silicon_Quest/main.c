@@ -321,8 +321,8 @@ int main()
         {
             if(!Player.initialized)
             {
-                InitPlayer(&Player, &Map);
                 InitMap(&Map, &Player, &Enemy);
+                InitPlayer(&Player, &Map);
                 InitEnemy(&Enemy, &Player, &Map);
             }
             gameState = game(&Player, &Map, &Enemy, background, blocos, Enemy.idle.Image, arial_18, bankGothic_50);
@@ -330,7 +330,11 @@ int main()
                 Player.initialized = false;
         }
         else if(gameState == 4)
+        {
             gameState = gamePause(gamePauseImage, frameMenu, background, &Player, &Map, &Enemy);
+            if((gameState != 3)&&(gameState != 4))
+                Player.initialized = false;
+        }
         else if(gameState == 5)
             gameState = mapCreatorMenu1(mapCreatorMenu1Image, frameMenu, background, &Map);
         else if(gameState == 6)
@@ -1722,6 +1726,8 @@ int mapCreator(struct Maps *curMap, ALLEGRO_BITMAP *background, ALLEGRO_BITMAP *
         }
         else if((mouse.selectedBlock == 5)&&(curMap->hasPlayer == false))
         {
+            if(curMap->Blocos[mouse.linha][mouse.coluna] == 4)
+                curMap->numSilicio--;
             if(curMap->Blocos[mouse.linha - 1][mouse.coluna] == 0)
             {
                 if(curMap->Blocos[mouse.linha][mouse.coluna] == 6)
@@ -1744,6 +1750,8 @@ int mapCreator(struct Maps *curMap, ALLEGRO_BITMAP *background, ALLEGRO_BITMAP *
         }
         else if((mouse.selectedBlock == 6)&&(curMap->numEnemies < MAX_ENEMIES)&&(curMap->Blocos[mouse.linha][mouse.coluna] != 6))
         {
+            if(curMap->Blocos[mouse.linha][mouse.coluna] == 4)
+                curMap->numSilicio--;
             if(curMap->Blocos[mouse.linha + 1][mouse.coluna] == 0)
             {
                 warning = true;
@@ -1772,7 +1780,16 @@ int mapCreator(struct Maps *curMap, ALLEGRO_BITMAP *background, ALLEGRO_BITMAP *
             curMap->hasPlayer = false;
         else if(curMap->Blocos[mouse.linha][mouse.coluna] == 6)
             curMap->numEnemies--;
-        curMap->Blocos[mouse.linha][mouse.coluna] = 0;
+
+        if((curMap->Blocos[mouse.linha - 1][mouse.coluna] == 6) || (curMap->Blocos[mouse.linha - 1][mouse.coluna] == 5))
+        {
+            warning = true;
+            warningTime = 0;
+            strcpy (warningText, "O spawner deve ser sustendado por um bloco!");
+        }
+        else
+            curMap->Blocos[mouse.linha][mouse.coluna] = 0;
+
     }
 
     if(movement)
@@ -2616,6 +2633,7 @@ void loadMap(struct Maps *curMap)
         // SAVE MAP TO FILE
         fp = fopen(mapNameTxt, "r");
         fscanf(fp, "%d %d %d %d", &curMap->numLinhas, &curMap->numColunas, &curMap->numEnemies, &curMap->numSilicio);
+        printf("%d %d %d %d \n", curMap->numLinhas, curMap->numColunas, curMap->numEnemies, curMap->numSilicio);
         for(i = 0; i < curMap->numLinhas; i++)
         {
             for(j = 0; j < curMap->numColunas; j++)
@@ -2624,6 +2642,9 @@ void loadMap(struct Maps *curMap)
                 curMap->Blocos[i][j] = a;
             }
         }
+
+        curMap->loaded = true;
+
         fclose(fp);
     }
 }
