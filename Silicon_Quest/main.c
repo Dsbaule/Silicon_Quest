@@ -565,7 +565,6 @@ void DrawPlayer(struct Players *Player)
     {
         al_draw_scaled_bitmap(Player->blockCracking.Image, Player->blockCracking.curFrame * Player->blockCracking.frameWidth, 0, Player->blockCracking.frameWidth, Player->blockCracking.frameHeight, (Map.x + (mouse.coluna * Map.blockWidth)), (Map.y + (mouse.linha * Map.blockHeight)), Map.blockWidth, Map.blockHeight,0);
     }
-
     if((Player->state == 0) && (Player->direction == 0))
     {
         al_draw_scaled_bitmap(Player->standing.Image, Player->standing.curFrame * Player->standing.frameWidth, 0, Player->standing.frameWidth, Player->standing.frameHeight, Player->x, Player->y, 200, 200,0);
@@ -722,6 +721,29 @@ void updatePlayer(struct Players *Player)
 void updateMapPosition(struct Players *Player, struct Maps *curMap, struct Enemies *Enemy)
 {
     int i;
+    if((Player->boundx < 0) || (curMap->x > 0))
+    {
+        Player->boundx -= curMap->x - 1;
+        updatePlayer(Player);
+        for(i=0; i<curMap->numEnemies; i++)
+        {
+            Enemy->x[i] -= curMap->x - 1;
+
+        }
+        curMap->x = 1;
+    }
+    if((Player->boundy < 0) || (curMap->y > 0))
+    {
+        Player->boundy -= curMap->y - 1;
+        updatePlayer(Player);
+        for(i=0; i<curMap->numEnemies; i++)
+        {
+            Enemy->y[i] -= curMap->y - 1;
+
+        }
+        curMap->y = 1;
+    }
+
     if((curMap->x <= 0) && (Player->boundx <= ((DISPLAY_WIDTH/2) - (Player->width/2))))
     {
         curMap->x += ((DISPLAY_WIDTH/2) - (Player->width/2)) - Player->boundx;
@@ -767,6 +789,8 @@ void updateMapPosition(struct Players *Player, struct Maps *curMap, struct Enemi
 
         Player->boundy = ((DISPLAY_HEIGHT/2) - (Player->height/2));
     }
+
+    printf("%d\t%d\t|\t%d\t%d\n", curMap->x, curMap->y, Player->boundx, Player->boundy);
 }
 
 void InitEnemy(struct Enemies *Enemy, struct Players *Player, struct Maps *curMap)
@@ -895,8 +919,8 @@ void InitMap(struct Maps *curMap, struct Players *Player, struct Enemies *Enemy,
     curMap->blockWidth = 50;
     curMap->blockHeight = 50;
 
-    curMap->x = (DISPLAY_WIDTH/2) - ((curMap->numColunas * curMap->blockWidth)/2);
-    curMap->y = (DISPLAY_HEIGHT/2) - ((curMap->numLinhas * curMap->blockHeight)/2);
+    curMap->x = 0;//(DISPLAY_WIDTH/2) - ((curMap->numColunas * curMap->blockWidth)/2);
+    curMap->y = 0;//(DISPLAY_HEIGHT/2) - ((curMap->numLinhas * curMap->blockHeight)/2);
 
     if(!curMap->loaded)
     {
