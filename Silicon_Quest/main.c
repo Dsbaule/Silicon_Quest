@@ -815,13 +815,15 @@ void DrawEnemy(struct Enemies *Enemy, struct Maps *curMap)
     int i;
     for(i = 0; i<curMap->numEnemies; i++)
     {
-        if(Enemy->direction[i] == 0)
-        {
-            al_draw_scaled_bitmap(Enemy->idle.Image, Enemy->idle.curFrame * Enemy->idle.frameWidth, 0, Enemy->idle.frameWidth, Enemy->idle.frameHeight, Enemy->x[i], Enemy->y[i], 50, 50,0);
-        }
-        else if(Enemy->direction[i] == 1)
-        {
-            al_draw_scaled_bitmap(Enemy->idle.Image, Enemy->idle.curFrame * Enemy->idle.frameWidth, 0, Enemy->idle.frameWidth, Enemy->idle.frameHeight, Enemy->x[i], Enemy->y[i], 50, 50, ALLEGRO_FLIP_HORIZONTAL);
+        if(Enemy->active[i]){
+            if(Enemy->direction[i] == 0)
+            {
+                al_draw_scaled_bitmap(Enemy->idle.Image, Enemy->idle.curFrame * Enemy->idle.frameWidth, 0, Enemy->idle.frameWidth, Enemy->idle.frameHeight, Enemy->x[i], Enemy->y[i], 50, 50,0);
+            }
+            else if(Enemy->direction[i] == 1)
+            {
+                al_draw_scaled_bitmap(Enemy->idle.Image, Enemy->idle.curFrame * Enemy->idle.frameWidth, 0, Enemy->idle.frameWidth, Enemy->idle.frameHeight, Enemy->x[i], Enemy->y[i], 50, 50, ALLEGRO_FLIP_HORIZONTAL);
+            }
         }
     }
 
@@ -842,26 +844,35 @@ void UpdateEnemy(struct Enemies *Enemy, struct Maps *curMap)
     int i, curLinha, curColuna;
     for(i=0; i<curMap->numEnemies; i++)
     {
-
-        if(Enemy->direction[i] == 0)
+        if(Enemy->active[i])
         {
-            curColuna = ((Enemy->x[i] - 1 - curMap->x) / curMap->blockWidth);
-            curLinha = ((Enemy->y[i] - curMap->y) / curMap->blockHeight);
-            if((curMap->Blocos[curLinha][curColuna] == 0) && (curMap->Blocos[curLinha + 1][curColuna] != 0))
-                Enemy->x[i] -= 2;
-            else
-                Enemy->direction[i] = 1;
+            if(Enemy->direction[i] == 0)
+            {
+                curColuna = ((Enemy->x[i] - 1 - curMap->x) / curMap->blockWidth);
+                curLinha = ((Enemy->y[i] - curMap->y) / curMap->blockHeight);
+                if((curMap->Blocos[curLinha][curColuna] == 0) && (curMap->Blocos[curLinha + 1][curColuna] != 0))
+                    Enemy->x[i] -= 2;
+                else
+                {
+                    Enemy->direction[i] = 1;
+                    if(curMap->Blocos[curLinha +1][curColuna + 1] == 0)
+                        Enemy->active[i] = false;
+                }
+            }
+            else if(Enemy->direction[i] == 1)
+            {
+                curColuna = ((Enemy->x[i] + 50 - curMap->x) / curMap->blockWidth);
+                curLinha = ((Enemy->y[i] - curMap->y) / curMap->blockHeight);
+                if((curMap->Blocos[curLinha][curColuna] == 0) && (curMap->Blocos[curLinha + 1][curColuna] != 0))
+                    Enemy->x[i] += 2;
+                else
+                {
+                    Enemy->direction[i] = 0;
+                    if(curMap->Blocos[curLinha +1][curColuna - 1] == 0)
+                        Enemy->active[i] = false;
+                }
+            }
         }
-        else if(Enemy->direction[i] == 1)
-        {
-            curColuna = ((Enemy->x[i] + 50 - curMap->x) / curMap->blockWidth);
-            curLinha = ((Enemy->y[i] - curMap->y) / curMap->blockHeight);
-            if((curMap->Blocos[curLinha][curColuna] == 0) && (curMap->Blocos[curLinha + 1][curColuna] != 0))
-                Enemy->x[i] += 2;
-            else
-                Enemy->direction[i] = 0;
-        }
-
 
     }
 
@@ -873,9 +884,11 @@ int checkEnemyCollision(struct Enemies *Enemy, struct Players *Player, struct Ma
     int i;
     for(i=0; i<curMap->numEnemies; i++)
     {
-        if(((Player->boundx >= Enemy->x[i]) && (Player->boundx <= (Enemy->x[i] + 50))) || ((Player->boundx2 >= Enemy->x[i]) && (Player->boundx2 <= (Enemy->x[i] + 50))))
+        if(Enemy->active[i]){
+        if(((Player->boundx >= (Enemy->x[i] + 10)) && (Player->boundx <= (Enemy->x[i] + 40))) || ((Player->boundx2 >= (Enemy->x[i] + 10)) && (Player->boundx2 <= (Enemy->x[i] + 40))))
             if(((Player->boundy >= Enemy->y[i]) && (Player->boundy <= (Enemy->y[i] + 50))) || ((Player->boundy2 >= Enemy->y[i]) && (Player->boundy2 <= (Enemy->y[i] + 50))))
                 return 1;
+        }
     }
     return 0;
 }
