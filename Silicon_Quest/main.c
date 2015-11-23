@@ -790,7 +790,7 @@ void updateMapPosition(struct Players *Player, struct Maps *curMap, struct Enemi
         Player->boundy = ((DISPLAY_HEIGHT/2) - (Player->height/2));
     }
 
-    printf("%d\t%d\t|\t%d\t%d\n", curMap->x, curMap->y, Player->boundx, Player->boundy);
+    //printf("%d\t%d\t|\t%d\t%d\n", curMap->x, curMap->y, Player->boundx, Player->boundy);
 }
 
 void InitEnemy(struct Enemies *Enemy, struct Players *Player, struct Maps *curMap)
@@ -2732,7 +2732,7 @@ void loadMap(struct Maps *curMap)
         // SAVE MAP TO FILE
         fp = fopen(mapNameTxt, "r");
         fscanf(fp, "%d %d %d %d", &curMap->numLinhas, &curMap->numColunas, &curMap->numEnemies, &curMap->numSilicio);
-        printf("%d %d %d %d \n", curMap->numLinhas, curMap->numColunas, curMap->numEnemies, curMap->numSilicio);
+        //printf("%d %d %d %d \n", curMap->numLinhas, curMap->numColunas, curMap->numEnemies, curMap->numSilicio);
         for(i = 0; i < curMap->numLinhas; i++)
         {
             for(j = 0; j < curMap->numColunas; j++)
